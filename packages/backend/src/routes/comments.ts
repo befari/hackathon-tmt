@@ -51,7 +51,7 @@ commentRouter.patch('/:id', async (req: Request, res: Response) => {
   const { body, resolved } = req.body;
 
   const comment = await prisma.comment.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       ...(body && { body }),
       ...(resolved !== undefined && { resolved }),
@@ -63,6 +63,6 @@ commentRouter.patch('/:id', async (req: Request, res: Response) => {
 
 // Delete a comment
 commentRouter.delete('/:id', async (req: Request, res: Response) => {
-  await prisma.comment.delete({ where: { id: req.params.id } });
+  await prisma.comment.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
 });

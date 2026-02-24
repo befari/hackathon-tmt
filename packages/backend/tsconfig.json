@@ -6,8 +6,5 @@
     "module": "ESNext",
     "moduleResolution": "bundler"
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../shared" }
-  ]
+  "include": ["src"]
 }

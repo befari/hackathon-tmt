@@ -19,7 +19,7 @@ threatModelRouter.get('/', async (_req: Request, res: Response) => {
 // Get a single threat model with all relations
 threatModelRouter.get('/:id', async (req: Request, res: Response) => {
   const model = await prisma.threatModel.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       components: true,
       dataFlows: true,
@@ -58,7 +58,7 @@ threatModelRouter.patch('/:id', async (req: Request, res: Response) => {
   const { name, description, status } = req.body;
 
   const model = await prisma.threatModel.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       ...(name && { name }),
       ...(description !== undefined && { description }),
@@ -71,14 +71,14 @@ threatModelRouter.patch('/:id', async (req: Request, res: Response) => {
 
 // Delete a threat model
 threatModelRouter.delete('/:id', async (req: Request, res: Response) => {
-  await prisma.threatModel.delete({ where: { id: req.params.id } });
+  await prisma.threatModel.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
 });
 
 // Get components for a threat model
 threatModelRouter.get('/:id/components', async (req: Request, res: Response) => {
   const components = await prisma.component.findMany({
-    where: { threatModelId: req.params.id },
+    where: { threatModelId: req.params.id as string },
     include: {
       outgoingFlows: true,
       incomingFlows: true,
@@ -100,7 +100,7 @@ threatModelRouter.post('/:id/components', async (req: Request, res: Response) =>
       positionX: positionX || 0,
       positionY: positionY || 0,
       metadata,
-      threatModelId: req.params.id,
+      threatModelId: req.params.id as string,
     },
   });
 
@@ -110,7 +110,7 @@ threatModelRouter.post('/:id/components', async (req: Request, res: Response) =>
 // Get data flows for a threat model
 threatModelRouter.get('/:id/data-flows', async (req: Request, res: Response) => {
   const flows = await prisma.dataFlow.findMany({
-    where: { threatModelId: req.params.id },
+    where: { threatModelId: req.params.id as string },
     include: { source: true, target: true },
   });
   res.json({ data: flows });
@@ -129,7 +129,7 @@ threatModelRouter.post('/:id/data-flows', async (req: Request, res: Response) =>
       sourceId,
       targetId,
       metadata,
-      threatModelId: req.params.id,
+      threatModelId: req.params.id as string,
     },
   });
 

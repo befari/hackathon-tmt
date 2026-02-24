@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== Enums ====================
+
+enum ModelStatus {
+  DRAFT
+  ANALYZING
+  READY
+  REVIEWED
+}
+
+enum ComponentType {
+  PROCESS
+  DATA_STORE
+  EXTERNAL_ENTITY
+  TRUST_BOUNDARY
+}
+
+enum StrideCategory {
+  SPOOFING
+  TAMPERING
+  REPUDIATION
+  INFO_DISCLOSURE
+  DENIAL_OF_SERVICE
+  ELEVATION_OF_PRIVILEGE
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum ThreatStatus {
+  OPEN
+  MITIGATED
+  ACCEPTED
+  OUT_OF_SCOPE
+}
+
+enum ReviewStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ==================== Models ====================
+
+model ThreatModel {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  repoUrl     String?
+  version     Int         @default(1)
+  status      ModelStatus @default(DRAFT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  components   Component[]
+  dataFlows    DataFlow[]
+  threats      Threat[]
+  chatMessages ChatMessage[]
+  reviews      Review[]
+
+  @@map("threat_models")
+}
+
+model Component {
+  id          String        @id @default(uuid())
+  name        String
+  type        ComponentType
+  description String?
+  sourceFiles String[]
+  positionX   Float         @default(0)
+  positionY   Float         @default(0)
+  metadata    Json?
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  outgoingFlows DataFlow[] @relation("source")
+  incomingFlows DataFlow[] @relation("target")
+  threats       Threat[]
+  comments      Comment[]
+
+  @@map("components")
+}
+
+model DataFlow {
+  id                   String  @id @default(uuid())
+  label                String
+  protocol             String?
+  dataClassification   String?
+  crossesTrustBoundary Boolean @default(false)
+  metadata             Json?
+
+  sourceId      String
+  source        Component @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId      String
+  target        Component @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  threats  Threat[]
+  comments Comment[]
+
+  @@map("data_flows")
+}
+
+model Threat {
+  id              String         @id @default(uuid())
+  title           String
+  description     String
+  strideCategory  StrideCategory
+  severity        Severity
+  status          ThreatStatus   @default(OPEN)
+  mitigationNotes String?
+  aiGenerated     Boolean        @default(true)
+  confidence      Float?
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  componentId   String?
+  component     Component?  @relation(fields: [componentId], references: [id], onDelete: SetNull)
+  dataFlowId    String?
+  dataFlow      DataFlow?   @relation(fields: [dataFlowId], references: [id], onDelete: SetNull)
+
+  comments Comment[]
+
+  @@map("threats")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  body      String
+  author    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  resolved  Boolean  @default(false)
+
+  threatId    String?
+  threat      Threat?    @relation(fields: [threatId], references: [id], onDelete: Cascade)
+  componentId String?
+  component   Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  dataFlowId  String?
+  dataFlow    DataFlow?  @relation(fields: [dataFlowId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Comment?  @relation("replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("replies")
+
+  reviewId String?
+  review   Review? @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+
+  @@map("comments")
+}
+
+model Review {
+  id           String       @id @default(uuid())
+  name         String
+  status       ReviewStatus @default(IN_PROGRESS)
+  reviewerName String?
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+
+  @@map("reviews")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  role      String   // user, assistant, system
+  content   String
+  timestamp DateTime @default(now())
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model CodeEmbedding {
+  id            String                  @id @default(uuid())
+  filePath      String
+  chunkIndex    Int
+  content       String
+  embedding     Unsupported("vector(1536)")
+  threatModelId String
+
+  @@index([threatModelId])
+  @@map("code_embeddings")
+}

@@ -19,7 +19,7 @@ threatRouter.get('/', async (req: Request, res: Response) => {
       dataFlow: { select: { id: true, label: true } },
       _count: { select: { comments: true } },
     },
-    orderBy: [{ severity: 'asc' }, { createdAt: 'desc' }],
+    orderBy: [{ severity: 'asc' }],
   });
 
   // Custom severity order (CRITICAL first)
@@ -32,7 +32,7 @@ threatRouter.get('/', async (req: Request, res: Response) => {
 // Get a single threat
 threatRouter.get('/:id', async (req: Request, res: Response) => {
   const threat = await prisma.threat.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       component: true,
       dataFlow: true,
@@ -58,7 +58,7 @@ threatRouter.patch('/:id', async (req: Request, res: Response) => {
   const { status, mitigationNotes, severity, title, description } = req.body;
 
   const threat = await prisma.threat.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       ...(status && { status }),
       ...(mitigationNotes !== undefined && { mitigationNotes }),
@@ -73,6 +73,6 @@ threatRouter.patch('/:id', async (req: Request, res: Response) => {
 
 // Delete a threat
 threatRouter.delete('/:id', async (req: Request, res: Response) => {
-  await prisma.threat.delete({ where: { id: req.params.id } });
+  await prisma.threat.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
 });

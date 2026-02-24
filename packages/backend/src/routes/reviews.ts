@@ -23,7 +23,7 @@ reviewRouter.get('/', async (req: Request, res: Response) => {
 // Get a single review with comments
 reviewRouter.get('/:id', async (req: Request, res: Response) => {
   const review = await prisma.review.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       comments: {
         where: { parentId: null },
@@ -61,7 +61,7 @@ reviewRouter.patch('/:id', async (req: Request, res: Response) => {
   const { status, reviewerName } = req.body;
 
   const review = await prisma.review.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       ...(status && { status }),
       ...(reviewerName && { reviewerName }),

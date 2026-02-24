@@ -6,7 +6,7 @@ export const chatRouter = Router();
 // Get chat history for a threat model
 chatRouter.get('/:threatModelId', async (req: Request, res: Response) => {
   const messages = await prisma.chatMessage.findMany({
-    where: { threatModelId: req.params.threatModelId },
+    where: { threatModelId: req.params.threatModelId as string },
     orderBy: { timestamp: 'asc' },
   });
 
@@ -16,7 +16,7 @@ chatRouter.get('/:threatModelId', async (req: Request, res: Response) => {
 // Send a message (placeholder — AI integration comes in Day 2)
 chatRouter.post('/:threatModelId', async (req: Request, res: Response) => {
   const { message } = req.body;
-  const { threatModelId } = req.params;
+  const { threatModelId } = req.params as { threatModelId: string };
 
   // Save user message
   const userMessage = await prisma.chatMessage.create({
