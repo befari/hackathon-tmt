@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   ReactFlow,
@@ -15,7 +15,8 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { makeStyles, tokens, Text, Spinner } from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Spinner, Button } from '@fluentui/react-components';
+import { ArrowUpload20Regular } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
 import { ExternalEntityNode } from './nodes/ExternalEntityNode';
@@ -66,8 +67,11 @@ export function DfdCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
   const [modelName, setModelName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const loadModel = () => {
     if (!id) return;
 
     fetch(`/api/threat-models/${id}`)
@@ -110,7 +114,39 @@ export function DfdCanvas() {
         console.error('Failed to load threat model:', err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadModel();
   }, [id, setNodes, setEdges]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+
+    setUploading(true);
+    setUploadStatus('Uploading and analyzing code...');
+
+    const formData = new FormData();
+    formData.append('code', file);
+
+    try {
+      const res = await fetch(`/api/upload/${id}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error);
+      setUploadStatus(data.message);
+      // Reload the model to show generated DFD
+      loadModel();
+    } catch (err: any) {
+      setUploadStatus(`Error: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
@@ -150,9 +186,37 @@ export function DfdCanvas() {
           <Text weight="semibold" size={400}>
             {modelName || 'Data Flow Diagram'}
           </Text>
-          {nodes.length === 0 && (
+          {nodes.length === 0 && !uploading && (
+            <div style={{ marginTop: '8px' }}>
+              <Text size={200} block style={{ opacity: 0.7, marginBottom: '8px' }}>
+                Upload source code to auto-generate the DFD
+              </Text>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".zip"
+                onChange={handleUpload}
+                style={{ display: 'none' }}
+              />
+              <Button
+                appearance="primary"
+                icon={<ArrowUpload20Regular />}
+                onClick={() => fileInputRef.current?.click()}
+                size="small"
+              >
+                Upload Source Code (.zip)
+              </Button>
+            </div>
+          )}
+          {uploading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+              <Spinner size="tiny" />
+              <Text size={200}>{uploadStatus}</Text>
+            </div>
+          )}
+          {!uploading && uploadStatus && nodes.length > 0 && (
             <Text size={200} block style={{ marginTop: '4px', opacity: 0.7 }}>
-              Upload source code to generate DFD, or add components manually
+              {uploadStatus}
             </Text>
           )}
         </Panel>

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma/client.js';
+import { chatWithContext } from '../services/ai/embeddings.js';
 
 export const chatRouter = Router();
 
@@ -13,7 +14,7 @@ chatRouter.get('/:threatModelId', async (req: Request, res: Response) => {
   res.json({ data: messages });
 });
 
-// Send a message (placeholder — AI integration comes in Day 2)
+// Send a message with AI response
 chatRouter.post('/:threatModelId', async (req: Request, res: Response) => {
   const { message } = req.body;
   const { threatModelId } = req.params as { threatModelId: string };
@@ -27,11 +28,29 @@ chatRouter.post('/:threatModelId', async (req: Request, res: Response) => {
     },
   });
 
-  // TODO: AI response generation with RAG context
+  // Get chat history for context
+  const history = await prisma.chatMessage.findMany({
+    where: { threatModelId },
+    orderBy: { timestamp: 'asc' },
+    take: 20,
+  });
+
+  let aiResponse: string;
+  try {
+    aiResponse = await chatWithContext(
+      threatModelId,
+      message,
+      history.map((m) => ({ role: m.role, content: m.content }))
+    );
+  } catch (err: any) {
+    console.error('AI chat error:', err.message);
+    aiResponse = `I'm unable to connect to the AI service right now. Error: ${err.message}`;
+  }
+
   const assistantMessage = await prisma.chatMessage.create({
     data: {
       role: 'assistant',
-      content: 'AI integration coming soon. This is a placeholder response.',
+      content: aiResponse,
       threatModelId,
     },
   });

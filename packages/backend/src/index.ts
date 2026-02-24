@@ -6,6 +6,7 @@ import { threatRouter } from './routes/threats.js';
 import { commentRouter } from './routes/comments.js';
 import { reviewRouter } from './routes/reviews.js';
 import { chatRouter } from './routes/chat.js';
+import { uploadRouter } from './routes/upload.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use('/api/threats', threatRouter);
 app.use('/api/comments', commentRouter);
 app.use('/api/reviews', reviewRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/upload', uploadRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
