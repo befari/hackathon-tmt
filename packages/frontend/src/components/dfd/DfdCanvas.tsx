@@ -15,6 +15,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import './dfd-dark.css';
 import { makeStyles, tokens, Text, Spinner, Button } from '@fluentui/react-components';
 import { ArrowUpload20Regular } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
@@ -176,11 +177,14 @@ export function DfdCanvas() {
         snapGrid={[15, 15]}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-        <Controls />
+        <Controls style={{ backgroundColor: '#2d2d2d', borderColor: '#444', borderRadius: '8px' }} />
         <MiniMap
           nodeStrokeWidth={3}
           zoomable
           pannable
+          style={{ backgroundColor: '#1e1e1e', borderRadius: '8px' }}
+          nodeColor="#4a9eff"
+          maskColor="rgba(0, 0, 0, 0.6)"
         />
         <Panel position="top-left" className={styles.panel}>
           <Text weight="semibold" size={400}>

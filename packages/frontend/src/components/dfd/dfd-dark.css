@@ -1,0 +1,43 @@
+/* Dark theme overrides for React Flow controls */
+.react-flow__controls {
+  background-color: #2d2d2d !important;
+  border: 1px solid #444 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.react-flow__controls-button {
+  background-color: #2d2d2d !important;
+  border-bottom: 1px solid #444 !important;
+  fill: #d4d4d4 !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #3d3d3d !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #d4d4d4 !important;
+}
+
+/* MiniMap dark theme */
+.react-flow__minimap {
+  background-color: #1e1e1e !important;
+  border: 1px solid #444 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Edge labels dark theme */
+.react-flow__edge-textbg {
+  fill: #2d2d2d !important;
+}
+
+.react-flow__edge-text {
+  fill: #d4d4d4 !important;
+}
+
+/* Attribution removal (React Flow free tier shows watermark) */
+.react-flow__attribution {
+  display: none !important;
+}
