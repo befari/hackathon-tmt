@@ -14,11 +14,20 @@ import {
   Textarea,
   CounterBadge,
   Divider,
+  Input,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  DialogContent,
 } from '@fluentui/react-components';
 import {
   Comment20Regular,
   ChevronDown20Regular,
   ChevronUp20Regular,
+  Add20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
@@ -141,6 +150,8 @@ export function ThreatList() {
   const [newCommentText, setNewCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
 
   const loadThreats = useCallback(() => {
     if (!id) return;
@@ -227,6 +238,21 @@ export function ThreatList() {
     }
   }, []);
 
+  const handleCreateThreat = useCallback(async () => {
+    if (!id || !newThreat.title.trim() || !newThreat.description.trim()) return;
+    try {
+      await api.createThreat({
+        ...newThreat,
+        threatModelId: id,
+      });
+      setCreateOpen(false);
+      setNewThreat({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
+      loadThreats();
+    } catch (err) {
+      console.error('Failed to create threat:', err);
+    }
+  }, [id, newThreat, loadThreats]);
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -266,6 +292,60 @@ export function ThreatList() {
             <Option value="ACCEPTED">Accepted</Option>
             <Option value="OUT_OF_SCOPE">Out of Scope</Option>
           </Dropdown>
+          <Dialog open={createOpen} onOpenChange={(_e, data) => setCreateOpen(data.open)}>
+            <DialogTrigger>
+              <Button appearance="primary" icon={<Add20Regular />}>Add Threat</Button>
+            </DialogTrigger>
+            <DialogSurface>
+              <DialogBody>
+                <DialogTitle>Add Threat</DialogTitle>
+                <DialogContent>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <Input
+                      placeholder="Threat title"
+                      value={newThreat.title}
+                      onChange={(_e, d) => setNewThreat((p) => ({ ...p, title: d.value }))}
+                    />
+                    <Textarea
+                      placeholder="Description of the threat..."
+                      value={newThreat.description}
+                      onChange={(_e, d) => setNewThreat((p) => ({ ...p, description: d.value }))}
+                      rows={3}
+                    />
+                    <Dropdown
+                      value={strideLabels[newThreat.strideCategory] || newThreat.strideCategory}
+                      selectedOptions={[newThreat.strideCategory]}
+                      onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, strideCategory: d.optionValue as string }))}
+                    >
+                      <Option value="SPOOFING">Spoofing</Option>
+                      <Option value="TAMPERING">Tampering</Option>
+                      <Option value="REPUDIATION">Repudiation</Option>
+                      <Option value="INFO_DISCLOSURE">Info Disclosure</Option>
+                      <Option value="DENIAL_OF_SERVICE">Denial of Service</Option>
+                      <Option value="ELEVATION_OF_PRIVILEGE">Elevation of Privilege</Option>
+                    </Dropdown>
+                    <Dropdown
+                      value={newThreat.severity}
+                      selectedOptions={[newThreat.severity]}
+                      onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, severity: d.optionValue as string }))}
+                    >
+                      <Option value="CRITICAL">Critical</Option>
+                      <Option value="HIGH">High</Option>
+                      <Option value="MEDIUM">Medium</Option>
+                      <Option value="LOW">Low</Option>
+                      <Option value="INFO">Info</Option>
+                    </Dropdown>
+                  </div>
+                </DialogContent>
+                <DialogActions>
+                  <DialogTrigger><Button appearance="secondary">Cancel</Button></DialogTrigger>
+                  <Button appearance="primary" onClick={handleCreateThreat} disabled={!newThreat.title.trim() || !newThreat.description.trim()}>
+                    Create
+                  </Button>
+                </DialogActions>
+              </DialogBody>
+            </DialogSurface>
+          </Dialog>
         </div>
       </div>
 
@@ -303,6 +383,16 @@ export function ThreatList() {
                   {threat.aiGenerated && (
                     <Badge appearance="outline" color="informative">
                       AI Generated
+                    </Badge>
+                  )}
+                  {(threat as any).component && (
+                    <Badge appearance="outline" color="brand">
+                      📦 {(threat as any).component.name}
+                    </Badge>
+                  )}
+                  {(threat as any).dataFlow && (
+                    <Badge appearance="outline" color="brand">
+                      🔗 {(threat as any).dataFlow.label}
                     </Badge>
                   )}
                   <Button

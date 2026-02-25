@@ -6,13 +6,39 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
 
 export const threatRouter = Router();
 
+// Create a threat
+threatRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
+  const { title, description, strideCategory, severity, threatModelId, componentId, dataFlowId, mitigationNotes } = req.body;
+
+  const threat = await prisma.threat.create({
+    data: {
+      title,
+      description,
+      strideCategory,
+      severity: severity || 'MEDIUM',
+      threatModelId,
+      ...(componentId && { componentId }),
+      ...(dataFlowId && { dataFlowId }),
+      ...(mitigationNotes && { mitigationNotes }),
+      aiGenerated: false,
+    },
+    include: {
+      component: { select: { id: true, name: true, type: true } },
+      dataFlow: { select: { id: true, label: true } },
+    },
+  });
+
+  res.status(201).json({ data: threat });
+}));
+
 // List threats (with optional filters)
 threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const { threatModelId, strideCategory, severity, status } = req.query;
+  const { threatModelId, strideCategory, severity, status, componentId } = req.query;
 
   const threats = await prisma.threat.findMany({
     where: {
       ...(threatModelId && { threatModelId: threatModelId as string }),
+      ...(componentId && { componentId: componentId as string }),
       ...(strideCategory && { strideCategory: strideCategory as any }),
       ...(severity && { severity: severity as any }),
       ...(status && { status: status as any }),

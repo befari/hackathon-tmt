@@ -10,6 +10,7 @@ import {
   Checkbox,
   Button,
   Divider,
+  Badge,
   Dialog,
   DialogTrigger,
   DialogSurface,
@@ -18,7 +19,7 @@ import {
   DialogActions,
   DialogContent,
 } from '@fluentui/react-components';
-import { Delete20Regular, Save20Regular, Dismiss16Regular } from '@fluentui/react-icons';
+import { Delete20Regular, Save20Regular, Dismiss16Regular, ShieldTask20Regular } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Node, Edge } from '@xyflow/react';
 
@@ -62,14 +63,21 @@ const useStyles = makeStyles({
     padding: '12px 16px',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
+  threatItem: {
+    padding: '6px 8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    borderLeft: `3px solid ${tokens.colorPaletteRedBorderActive}`,
+    marginBottom: '4px',
+  },
 });
 
-const COMPONENT_TYPES = ['PROCESS', 'DATA_STORE', 'EXTERNAL_ENTITY', 'TRUST_BOUNDARY'] as const;
 const DATA_CLASSIFICATIONS = ['public', 'internal', 'confidential', 'restricted'] as const;
 
 interface PropertyPanelProps {
   selectedNode: Node | null;
   selectedEdge: Edge | null;
+  threatModelId?: string;
   onClose: () => void;
   onNodeUpdated: (id: string, data: Record<string, any>) => void;
   onEdgeUpdated: (id: string, data: Record<string, any>) => void;
@@ -80,6 +88,7 @@ interface PropertyPanelProps {
 export function PropertyPanel({
   selectedNode,
   selectedEdge,
+  threatModelId,
   onClose,
   onNodeUpdated,
   onEdgeUpdated,
@@ -102,6 +111,18 @@ export function PropertyPanel({
 
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [linkedThreats, setLinkedThreats] = useState<any[]>([]);
+
+  // Load linked threats when a node is selected
+  useEffect(() => {
+    if (selectedNode && threatModelId) {
+      api.listThreats({ threatModelId, componentId: selectedNode.id })
+        .then(({ data }: any) => setLinkedThreats(data || []))
+        .catch(() => setLinkedThreats([]));
+    } else {
+      setLinkedThreats([]);
+    }
+  }, [selectedNode, threatModelId]);
 
   // Populate fields when selection changes
   useEffect(() => {
@@ -201,18 +222,7 @@ export function PropertyPanel({
               <Text size={200} weight="semibold">Name</Text>
               <Input value={name} onChange={(_e, d) => setName(d.value)} />
             </div>
-            <div className={styles.field}>
-              <Text size={200} weight="semibold">Type</Text>
-              <Dropdown
-                value={type}
-                selectedOptions={[type]}
-                onOptionSelect={(_e, d) => setType(d.optionValue || 'PROCESS')}
-              >
-                {COMPONENT_TYPES.map((t) => (
-                  <Option key={t} value={t}>{t.replace(/_/g, ' ')}</Option>
-                ))}
-              </Dropdown>
-            </div>
+            <Text size={200} style={{ opacity: 0.6 }}>Type: {type.replace(/_/g, ' ')}</Text>
             <div className={styles.field}>
               <Text size={200} weight="semibold">Description</Text>
               <Textarea
@@ -229,6 +239,30 @@ export function PropertyPanel({
                 placeholder="file1.ts, file2.ts"
               />
             </div>
+            {linkedThreats.length > 0 && (
+              <>
+                <Divider />
+                <div className={styles.field}>
+                  <Text size={200} weight="semibold">
+                    <ShieldTask20Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                    Linked Threats ({linkedThreats.length})
+                  </Text>
+                  {linkedThreats.map((t: any) => (
+                    <div key={t.id} className={styles.threatItem}>
+                      <Text size={200} weight="semibold" block>{t.title}</Text>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                        <Badge size="small" color={
+                          t.severity === 'CRITICAL' ? 'danger' :
+                          t.severity === 'HIGH' ? 'important' :
+                          t.severity === 'MEDIUM' ? 'warning' : 'informative'
+                        }>{t.severity}</Badge>
+                        <Badge size="small" appearance="outline">{t.status.replace('_', ' ')}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
 

@@ -36,12 +36,15 @@ import {
   Textarea,
   Badge,
   Divider,
+  Dropdown,
+  Option,
 } from '@fluentui/react-components';
 import {
   ArrowUpload20Regular,
   Add16Regular,
   Comment20Regular,
   Dismiss16Regular,
+  ShieldTask20Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -216,6 +219,10 @@ export function DfdCanvas() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [threatDialogOpen, setThreatDialogOpen] = useState(false);
+  const [threatComponentId, setThreatComponentId] = useState<string | null>(null);
+  const [threatComponentName, setThreatComponentName] = useState('');
+  const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const loadCommentCounts = useCallback(async () => {
@@ -457,6 +464,28 @@ export function DfdCanvas() {
     },
     [selectedNode, selectedEdge]
   );
+
+  const openThreatDialog = useCallback((componentId: string, componentName: string) => {
+    setThreatComponentId(componentId);
+    setThreatComponentName(componentName);
+    setNewThreat({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
+    setThreatDialogOpen(true);
+    setActionNode(null);
+  }, []);
+
+  const handleCreateThreat = useCallback(async () => {
+    if (!id || !newThreat.title.trim() || !newThreat.description.trim()) return;
+    try {
+      await api.createThreat({
+        ...newThreat,
+        threatModelId: id,
+        componentId: threatComponentId,
+      });
+      setThreatDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to create threat:', err);
+    }
+  }, [id, newThreat, threatComponentId]);
 
   // Property panel callbacks
   const handleNodeUpdated = useCallback(
@@ -710,6 +739,18 @@ export function DfdCanvas() {
             >
               Comment
             </Button>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<ShieldTask20Regular />}
+              onClick={() => {
+                const node = nodes.find((n) => n.id === actionNode.nodeId);
+                const label = (node?.data as any)?.label || 'Component';
+                openThreatDialog(actionNode.nodeId, label);
+              }}
+            >
+              Add Threat
+            </Button>
           </div>
         )}
 
@@ -783,6 +824,7 @@ export function DfdCanvas() {
           <PropertyPanel
             selectedNode={selectedNode}
             selectedEdge={selectedEdge}
+            threatModelId={id}
             onClose={closePropertyPanel}
             onNodeUpdated={handleNodeUpdated}
             onEdgeUpdated={handleEdgeUpdated}
@@ -809,6 +851,62 @@ export function DfdCanvas() {
                 </DialogTrigger>
                 <Button appearance="primary" onClick={handleDeleteSelected}>
                   Delete
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+
+        {/* Add threat from DFD dialog */}
+        <Dialog
+          open={threatDialogOpen}
+          onOpenChange={(_e, data) => setThreatDialogOpen(data.open)}
+        >
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>Add Threat to {threatComponentName}</DialogTitle>
+              <DialogContent>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                  <Input
+                    placeholder="Threat title"
+                    value={newThreat.title}
+                    onChange={(_e, d) => setNewThreat((p) => ({ ...p, title: d.value }))}
+                  />
+                  <Textarea
+                    placeholder="Description of the threat..."
+                    value={newThreat.description}
+                    onChange={(_e, d) => setNewThreat((p) => ({ ...p, description: d.value }))}
+                    rows={3}
+                  />
+                  <Dropdown
+                    value={newThreat.strideCategory}
+                    selectedOptions={[newThreat.strideCategory]}
+                    onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, strideCategory: d.optionValue as string }))}
+                  >
+                    <Option value="SPOOFING">Spoofing</Option>
+                    <Option value="TAMPERING">Tampering</Option>
+                    <Option value="REPUDIATION">Repudiation</Option>
+                    <Option value="INFO_DISCLOSURE">Info Disclosure</Option>
+                    <Option value="DENIAL_OF_SERVICE">Denial of Service</Option>
+                    <Option value="ELEVATION_OF_PRIVILEGE">Elevation of Privilege</Option>
+                  </Dropdown>
+                  <Dropdown
+                    value={newThreat.severity}
+                    selectedOptions={[newThreat.severity]}
+                    onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, severity: d.optionValue as string }))}
+                  >
+                    <Option value="CRITICAL">Critical</Option>
+                    <Option value="HIGH">High</Option>
+                    <Option value="MEDIUM">Medium</Option>
+                    <Option value="LOW">Low</Option>
+                    <Option value="INFO">Info</Option>
+                  </Dropdown>
+                </div>
+              </DialogContent>
+              <DialogActions>
+                <DialogTrigger><Button appearance="secondary">Cancel</Button></DialogTrigger>
+                <Button appearance="primary" onClick={handleCreateThreat} disabled={!newThreat.title.trim() || !newThreat.description.trim()}>
+                  Create
                 </Button>
               </DialogActions>
             </DialogBody>

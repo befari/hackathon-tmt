@@ -60,8 +60,12 @@ export const api = {
     return request<any>(`/threats${query}`);
   },
   getThreat: (id: string) => request<any>(`/threats/${id}`),
+  createThreat: (data: Record<string, any>) =>
+    request<any>('/threats', { method: 'POST', body: JSON.stringify(data) }),
   updateThreat: (id: string, data: Record<string, any>) =>
     request<any>(`/threats/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteThreat: (id: string) =>
+    request<any>(`/threats/${id}`, { method: 'DELETE' }),
 
   // Comments
   getComments: (params: Record<string, string>) =>
