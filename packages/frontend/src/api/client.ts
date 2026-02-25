@@ -1,12 +1,27 @@
 const API_BASE = '/api';
 
+let tokenProvider: (() => Promise<string | null>) | null = null;
+
+export function setTokenProvider(provider: () => Promise<string | null>) {
+  tokenProvider = provider;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+
+  if (tokenProvider) {
+    const token = await tokenProvider();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -88,4 +103,24 @@ export const api = {
   getChatHistory: (threatModelId: string) => request<any>(`/chat/${threatModelId}`),
   sendMessage: (threatModelId: string, message: string) =>
     request<any>(`/chat/${threatModelId}`, { method: 'POST', body: JSON.stringify({ message }) }),
+
+  // Auth
+  getMe: () => request<any>('/auth/me'),
+  joinShareLink: (token: string) => request<any>(`/auth/share/${token}`),
+
+  // Members
+  listMembers: (modelId: string) => request<any>(`/threat-models/${modelId}/members`),
+  addMember: (modelId: string, data: { email: string; role: string }) =>
+    request<any>(`/threat-models/${modelId}/members`, { method: 'POST', body: JSON.stringify(data) }),
+  updateMember: (modelId: string, memberId: string, data: { role: string }) =>
+    request<any>(`/threat-models/${modelId}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  removeMember: (modelId: string, memberId: string) =>
+    request<any>(`/threat-models/${modelId}/members/${memberId}`, { method: 'DELETE' }),
+
+  // Share Links
+  listShareLinks: (modelId: string) => request<any>(`/threat-models/${modelId}/share-links`),
+  createShareLink: (modelId: string, data: { role: string; expiresAt?: string }) =>
+    request<any>(`/threat-models/${modelId}/share-links`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteShareLink: (modelId: string, linkId: string) =>
+    request<any>(`/threat-models/${modelId}/share-links/${linkId}`, { method: 'DELETE' }),
 };

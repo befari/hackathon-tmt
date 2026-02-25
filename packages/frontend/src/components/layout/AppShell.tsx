@@ -6,6 +6,10 @@ import {
   Text,
   Button,
   Tooltip,
+  Avatar,
+  Popover,
+  PopoverTrigger,
+  PopoverSurface,
 } from '@fluentui/react-components';
 import {
   Shield20Regular,
@@ -16,7 +20,10 @@ import {
   ClipboardCheckmark20Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
+  PersonAdd20Regular,
+  SignOut20Regular,
 } from '@fluentui/react-icons';
+import { useAuth } from '../../auth/useAuth';
 
 const useStyles = makeStyles({
   container: {
@@ -68,10 +75,31 @@ const useStyles = makeStyles({
     flex: 1,
     overflow: 'auto',
   },
-  toggleBtn: {
+  bottomSection: {
     marginTop: 'auto',
-    padding: '12px',
     borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '8px 6px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  userInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 6px',
+    cursor: 'pointer',
+    borderRadius: tokens.borderRadiusMedium,
+    '&:hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
+  popoverContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '8px',
+    minWidth: '200px',
   },
 });
 
@@ -84,6 +112,7 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [expanded, setExpanded] = useState(true);
+  const { isAuthEnabled, isAuthenticated, user, login, logout } = useAuth();
 
   // Extract model ID from URL if present
   const modelMatch = location.pathname.match(/\/model\/([^/]+)/);
@@ -128,7 +157,48 @@ export function AppShell({ children }: AppShellProps) {
           );
         })}
 
-        <div className={styles.toggleBtn}>
+        <div className={styles.bottomSection}>
+          {isAuthEnabled && !isAuthenticated && (
+            <Button
+              icon={<PersonAdd20Regular />}
+              appearance="primary"
+              size="small"
+              onClick={login}
+            >
+              {expanded ? 'Sign In' : ''}
+            </Button>
+          )}
+
+          {isAuthEnabled && isAuthenticated && user && (
+            <Popover>
+              <PopoverTrigger>
+                <div className={styles.userInfo}>
+                  <Avatar name={user.name} size={28} color="brand" />
+                  {expanded && (
+                    <div style={{ overflow: 'hidden' }}>
+                      <Text size={200} weight="semibold" block truncate>{user.name}</Text>
+                      <Text size={100} style={{ opacity: 0.6 }} block truncate>{user.email}</Text>
+                    </div>
+                  )}
+                </div>
+              </PopoverTrigger>
+              <PopoverSurface>
+                <div className={styles.popoverContent}>
+                  <Text weight="semibold">{user.name}</Text>
+                  <Text size={200} style={{ opacity: 0.7 }}>{user.email}</Text>
+                  <Button
+                    icon={<SignOut20Regular />}
+                    appearance="subtle"
+                    onClick={logout}
+                    size="small"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </PopoverSurface>
+            </Popover>
+          )}
+
           <Button
             icon={expanded ? <ChevronLeft20Regular /> : <ChevronRight20Regular />}
             appearance="subtle"

@@ -55,7 +55,29 @@ enum ReviewStatus {
   CANCELLED
 }
 
+enum MemberRole {
+  OWNER
+  EDITOR
+  REVIEWER
+  VIEWER
+}
+
 // ==================== Models ====================
+
+model User {
+  id        String   @id @default(uuid())
+  entraId   String   @unique // Azure AD object ID
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships ThreatModelMember[]
+  comments    Comment[]
+
+  @@map("users")
+}
 
 model ThreatModel {
   id          String      @id @default(uuid())
@@ -71,8 +93,39 @@ model ThreatModel {
   threats      Threat[]
   chatMessages ChatMessage[]
   reviews      Review[]
+  members      ThreatModelMember[]
+  shareLinks   ShareLink[]
 
   @@map("threat_models")
+}
+
+model ThreatModelMember {
+  id   String     @id @default(uuid())
+  role MemberRole @default(VIEWER)
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, threatModelId])
+  @@map("threat_model_members")
+}
+
+model ShareLink {
+  id        String     @id @default(uuid())
+  token     String     @unique @default(uuid())
+  role      MemberRole @default(VIEWER)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  expiresAt DateTime?
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@map("share_links")
 }
 
 model Diagram {
@@ -165,6 +218,8 @@ model Comment {
   updatedAt DateTime @updatedAt
   resolved  Boolean  @default(false)
 
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   threatId    String?
   threat      Threat?    @relation(fields: [threatId], references: [id], onDelete: Cascade)
   componentId String?

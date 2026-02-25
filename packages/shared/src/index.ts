@@ -191,3 +191,40 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+// ==================== Auth ====================
+
+export enum MemberRole {
+  OWNER = 'OWNER',
+  EDITOR = 'EDITOR',
+  REVIEWER = 'REVIEWER',
+  VIEWER = 'VIEWER',
+}
+
+export interface User {
+  id: string;
+  entraId: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface ThreatModelMember {
+  id: string;
+  role: MemberRole;
+  userId: string;
+  threatModelId: string;
+  user?: User;
+  createdAt: string;
+}
+
+export interface ShareLink {
+  id: string;
+  token: string;
+  role: MemberRole;
+  active: boolean;
+  threatModelId: string;
+  createdAt: string;
+  expiresAt?: string;
+}

@@ -52,6 +52,7 @@ import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
 import { ComponentPalette } from './ComponentPalette';
 import { PropertyPanel } from './PropertyPanel';
+import { ShareDialog } from '../sharing/ShareDialog';
 import { api } from '../../api/client';
 import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
 
@@ -679,9 +680,12 @@ export function DfdCanvas() {
             maskColor="rgba(0, 0, 0, 0.6)"
           />
           <Panel position="top-left" className={styles.panel}>
-            <Text weight="semibold" size={400}>
-              {modelName || 'Data Flow Diagram'}
-            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Text weight="semibold" size={400}>
+                {modelName || 'Data Flow Diagram'}
+              </Text>
+              {id && <ShareDialog threatModelId={id} threatModelName={modelName} />}
+            </div>
             {nodes.length === 0 && !uploading && (
               <div style={{ marginTop: '8px' }}>
                 <Text size={200} block style={{ opacity: 0.7, marginBottom: '8px' }}>
