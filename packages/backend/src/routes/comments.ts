@@ -61,6 +61,44 @@ commentRouter.patch('/:id', async (req: Request, res: Response) => {
   res.json({ data: comment });
 });
 
+// Get comment counts grouped by target for a threat model
+commentRouter.get('/counts', async (req: Request, res: Response) => {
+  const { threatModelId } = req.query;
+  if (!threatModelId) {
+    res.status(400).json({ error: 'threatModelId is required' });
+    return;
+  }
+
+  const [componentCounts, threatCounts, flowCounts] = await Promise.all([
+    prisma.comment.groupBy({
+      by: ['componentId'],
+      where: { componentId: { not: null }, component: { diagram: { threatModelId: threatModelId as string } } },
+      _count: true,
+    }),
+    prisma.comment.groupBy({
+      by: ['threatId'],
+      where: { threatId: { not: null }, threat: { threatModelId: threatModelId as string } },
+      _count: true,
+    }),
+    prisma.comment.groupBy({
+      by: ['dataFlowId'],
+      where: { dataFlowId: { not: null }, dataFlow: { diagram: { threatModelId: threatModelId as string } } },
+      _count: true,
+    }),
+  ]);
+
+  const toMap = <T extends Record<string, any>>(rows: T[], key: keyof T) =>
+    Object.fromEntries(rows.map((r) => [r[key] as string, r._count]));
+
+  res.json({
+    data: {
+      componentCounts: toMap(componentCounts, 'componentId'),
+      threatCounts: toMap(threatCounts, 'threatId'),
+      flowCounts: toMap(flowCounts, 'dataFlowId'),
+    },
+  });
+});
+
 // Delete a comment
 commentRouter.delete('/:id', async (req: Request, res: Response) => {
   await prisma.comment.delete({ where: { id: req.params.id as string } });

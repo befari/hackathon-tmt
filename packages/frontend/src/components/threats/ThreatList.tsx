@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   makeStyles,
@@ -10,8 +10,18 @@ import {
   Dropdown,
   Option,
   Spinner,
+  Button,
+  Textarea,
+  CounterBadge,
+  Divider,
 } from '@fluentui/react-components';
-import type { Threat } from '@superior-tmt/shared';
+import {
+  Comment20Regular,
+  ChevronDown20Regular,
+  ChevronUp20Regular,
+} from '@fluentui/react-icons';
+import { api } from '../../api/client';
+import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
 
 const useStyles = makeStyles({
   container: {
@@ -35,7 +45,6 @@ const useStyles = makeStyles({
     gap: '12px',
   },
   card: {
-    cursor: 'pointer',
     '&:hover': {
       boxShadow: tokens.shadow8,
     },
@@ -47,6 +56,8 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: '8px',
     marginTop: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap' as const,
   },
   loading: {
     display: 'flex',
@@ -59,6 +70,45 @@ const useStyles = makeStyles({
     textAlign: 'center' as const,
     padding: '64px 32px',
     color: tokens.colorNeutralForeground3,
+  },
+  editRow: {
+    display: 'flex',
+    gap: '12px',
+    marginTop: '12px',
+    alignItems: 'center',
+    flexWrap: 'wrap' as const,
+  },
+  commentSection: {
+    marginTop: '12px',
+    padding: '12px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  commentThread: {
+    marginBottom: '10px',
+    padding: '8px',
+    borderLeft: `3px solid ${tokens.colorBrandStroke1}`,
+    paddingLeft: '12px',
+  },
+  commentMeta: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+    opacity: 0.7,
+  },
+  commentBody: {
+    marginTop: '4px',
+  },
+  reply: {
+    marginLeft: '16px',
+    marginTop: '6px',
+    paddingLeft: '8px',
+    borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
+  },
+  commentInput: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '8px',
   },
 });
 
@@ -86,8 +136,13 @@ export function ThreatList() {
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [expandedThreat, setExpandedThreat] = useState<string | null>(null);
+  const [threatComments, setThreatComments] = useState<Record<string, TmtComment[]>>({});
+  const [newCommentText, setNewCommentText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
+  const loadThreats = useCallback(() => {
     if (!id) return;
     const params = new URLSearchParams({ threatModelId: id });
     if (severityFilter) params.set('severity', severityFilter);
@@ -97,6 +152,12 @@ export function ThreatList() {
       .then((r) => r.json())
       .then(({ data }) => {
         setThreats(data || []);
+        // Extract comment counts from _count
+        const counts: Record<string, number> = {};
+        for (const t of data || []) {
+          if (t._count?.comments) counts[t.id] = t._count.comments;
+        }
+        setCommentCounts(counts);
         setLoading(false);
       })
       .catch((err) => {
@@ -104,6 +165,67 @@ export function ThreatList() {
         setLoading(false);
       });
   }, [id, severityFilter, statusFilter]);
+
+  useEffect(() => {
+    loadThreats();
+  }, [loadThreats]);
+
+  const toggleComments = useCallback(async (threatId: string) => {
+    if (expandedThreat === threatId) {
+      setExpandedThreat(null);
+      return;
+    }
+    setExpandedThreat(threatId);
+    setNewCommentText('');
+    try {
+      const { data } = await api.getComments({ threatId });
+      setThreatComments((prev) => ({ ...prev, [threatId]: data || [] }));
+    } catch {
+      setThreatComments((prev) => ({ ...prev, [threatId]: [] }));
+    }
+  }, [expandedThreat]);
+
+  const handleAddComment = useCallback(async (threatId: string) => {
+    if (!newCommentText.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.createComment({
+        body: newCommentText,
+        author: 'Current User',
+        threatId,
+      });
+      setNewCommentText('');
+      const { data } = await api.getComments({ threatId });
+      setThreatComments((prev) => ({ ...prev, [threatId]: data || [] }));
+      setCommentCounts((prev) => ({ ...prev, [threatId]: (prev[threatId] || 0) + 1 }));
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [newCommentText]);
+
+  const handleStatusChange = useCallback(async (threatId: string, newStatus: string) => {
+    try {
+      await api.updateThreat(threatId, { status: newStatus });
+      setThreats((prev) =>
+        prev.map((t) => (t.id === threatId ? { ...t, status: newStatus as Threat['status'] } : t))
+      );
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  }, []);
+
+  const handleSeverityChange = useCallback(async (threatId: string, newSeverity: string) => {
+    try {
+      await api.updateThreat(threatId, { severity: newSeverity });
+      setThreats((prev) =>
+        prev.map((t) => (t.id === threatId ? { ...t, severity: newSeverity as Threat['severity'] } : t))
+      );
+    } catch (err) {
+      console.error('Failed to update severity:', err);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -183,7 +305,103 @@ export function ThreatList() {
                       AI Generated
                     </Badge>
                   )}
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
+                    onClick={() => toggleComments(threat.id)}
+                  >
+                    <Comment20Regular style={{ marginRight: '4px' }} />
+                    {commentCounts[threat.id] || 0}
+                  </Button>
                 </div>
+
+                {/* Inline status & severity editing */}
+                <div className={styles.editRow}>
+                  <Text size={200}>Status:</Text>
+                  <Dropdown
+                    size="small"
+                    value={threat.status.replace('_', ' ')}
+                    selectedOptions={[threat.status]}
+                    onOptionSelect={(_e, d) => handleStatusChange(threat.id, d.optionValue as string)}
+                    style={{ minWidth: '140px' }}
+                  >
+                    <Option value="OPEN">Open</Option>
+                    <Option value="MITIGATED">Mitigated</Option>
+                    <Option value="ACCEPTED">Accepted</Option>
+                    <Option value="OUT_OF_SCOPE">Out of Scope</Option>
+                  </Dropdown>
+                  <Text size={200}>Severity:</Text>
+                  <Dropdown
+                    size="small"
+                    value={threat.severity}
+                    selectedOptions={[threat.severity]}
+                    onOptionSelect={(_e, d) => handleSeverityChange(threat.id, d.optionValue as string)}
+                    style={{ minWidth: '120px' }}
+                  >
+                    <Option value="CRITICAL">Critical</Option>
+                    <Option value="HIGH">High</Option>
+                    <Option value="MEDIUM">Medium</Option>
+                    <Option value="LOW">Low</Option>
+                    <Option value="INFO">Info</Option>
+                  </Dropdown>
+                </div>
+
+                {/* Expandable comment section */}
+                {expandedThreat === threat.id && (
+                  <div className={styles.commentSection}>
+                    <Text weight="semibold" size={300} block style={{ marginBottom: '8px' }}>
+                      Comments
+                    </Text>
+
+                    {(threatComments[threat.id] || []).length === 0 && (
+                      <Text size={200} style={{ opacity: 0.6, display: 'block', marginBottom: '8px' }}>
+                        No comments yet.
+                      </Text>
+                    )}
+
+                    {(threatComments[threat.id] || []).map((comment) => (
+                      <div key={comment.id} className={styles.commentThread}>
+                        <div className={styles.commentMeta}>
+                          <Text size={100} weight="semibold">{comment.author}</Text>
+                          <Text size={100}>{new Date(comment.createdAt).toLocaleString()}</Text>
+                          {comment.resolved && <Badge appearance="outline" color="success" size="small">Resolved</Badge>}
+                        </div>
+                        <div className={styles.commentBody}>
+                          <Text size={200}>{comment.body}</Text>
+                        </div>
+                        {comment.replies?.map((reply) => (
+                          <div key={reply.id} className={styles.reply}>
+                            <div className={styles.commentMeta}>
+                              <Text size={100} weight="semibold">{reply.author}</Text>
+                              <Text size={100}>{new Date(reply.createdAt).toLocaleString()}</Text>
+                            </div>
+                            <Text size={200}>{reply.body}</Text>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+
+                    <Divider style={{ margin: '8px 0' }} />
+                    <div className={styles.commentInput}>
+                      <Textarea
+                        placeholder="Add a comment on this threat..."
+                        value={newCommentText}
+                        onChange={(_e, d) => setNewCommentText(d.value)}
+                        style={{ flex: 1 }}
+                        rows={2}
+                      />
+                      <Button
+                        appearance="primary"
+                        size="small"
+                        onClick={() => handleAddComment(threat.id)}
+                        disabled={!newCommentText.trim() || submitting}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

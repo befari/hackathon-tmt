@@ -13,6 +13,7 @@ import {
   BackgroundVariant,
   type Node,
   type Edge,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './dfd-dark.css';
@@ -32,13 +33,22 @@ import {
   DialogActions,
   DialogContent,
   Input,
+  Textarea,
+  Badge,
+  Divider,
 } from '@fluentui/react-components';
-import { ArrowUpload20Regular, Add16Regular } from '@fluentui/react-icons';
+import {
+  ArrowUpload20Regular,
+  Add16Regular,
+  Comment20Regular,
+  Dismiss16Regular,
+} from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
 import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
-import type { Diagram, Component, DataFlow } from '@superior-tmt/shared';
+import { api } from '../../api/client';
+import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
 
 const nodeTypes = {
   process: ProcessNode,
@@ -81,6 +91,51 @@ const useStyles = makeStyles({
     height: '100%',
     gap: '12px',
   },
+  nodeActionBar: {
+    position: 'absolute' as const,
+    zIndex: 10,
+    display: 'flex',
+    gap: '4px',
+    padding: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    boxShadow: tokens.shadow16,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  commentPanel: {
+    position: 'absolute' as const,
+    zIndex: 10,
+    width: '340px',
+    maxHeight: '420px',
+    overflowY: 'auto' as const,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    boxShadow: tokens.shadow16,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '16px',
+  },
+  commentThread: {
+    marginBottom: '10px',
+    padding: '8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    borderLeft: `3px solid ${tokens.colorBrandStroke1}`,
+  },
+  commentMeta: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+    opacity: 0.7,
+  },
+  commentBody: {
+    marginTop: '4px',
+  },
+  reply: {
+    marginLeft: '12px',
+    marginTop: '6px',
+    paddingLeft: '8px',
+    borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
+  },
 });
 
 function componentTypeToNodeType(type: string): string {
@@ -93,7 +148,10 @@ function componentTypeToNodeType(type: string): string {
   return map[type] || 'process';
 }
 
-function diagramToNodesAndEdges(diagram: Diagram | undefined) {
+function diagramToNodesAndEdges(
+  diagram: Diagram | undefined,
+  commentCounts: Record<string, number>,
+) {
   if (!diagram) return { flowNodes: [] as Node[], flowEdges: [] as Edge[] };
 
   const flowNodes: Node[] = (diagram.components || []).map((comp: Component) => ({
@@ -105,6 +163,7 @@ function diagramToNodesAndEdges(diagram: Diagram | undefined) {
       description: comp.description,
       sourceFiles: comp.sourceFiles,
       componentType: comp.type,
+      commentCount: commentCounts[comp.id] || 0,
     },
   }));
 
@@ -138,12 +197,30 @@ export function DfdCanvas() {
   const [selectedDiagramId, setSelectedDiagramId] = useState<string | null>(null);
   const [newDiagramDialogOpen, setNewDiagramDialogOpen] = useState(false);
   const [newDiagramName, setNewDiagramName] = useState('');
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  // Node action bar / comment panel state
+  const [actionNode, setActionNode] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+  const [commentPanelNode, setCommentPanelNode] = useState<{ nodeId: string; label: string; x: number; y: number } | null>(null);
+  const [nodeComments, setNodeComments] = useState<TmtComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  const loadCommentCounts = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { data } = await api.getCommentCounts(id);
+      setCommentCounts(data.componentCounts || {});
+    } catch {
+      // ignore
+    }
+  }, [id]);
 
   const selectDiagram = useCallback(
-    (diagramId: string | null, allDiagrams: Diagram[]) => {
+    (diagramId: string | null, allDiagrams: Diagram[], counts: Record<string, number>) => {
       setSelectedDiagramId(diagramId);
       const diagram = allDiagrams.find((d) => d.id === diagramId);
-      const { flowNodes, flowEdges } = diagramToNodesAndEdges(diagram);
+      const { flowNodes, flowEdges } = diagramToNodesAndEdges(diagram, counts);
       setNodes(flowNodes);
       setEdges(flowEdges);
     },
@@ -153,21 +230,23 @@ export function DfdCanvas() {
   const loadModel = useCallback(() => {
     if (!id) return;
 
-    fetch(`/api/threat-models/${id}`)
-      .then((r) => r.json())
-      .then(({ data }) => {
-        setModelName(data.name);
-        const loadedDiagrams: Diagram[] = data.diagrams || [];
-        setDiagrams(loadedDiagrams);
+    Promise.all([
+      fetch(`/api/threat-models/${id}`).then((r) => r.json()),
+      api.getCommentCounts(id).catch(() => ({ data: { componentCounts: {} } })),
+    ]).then(([{ data }, countsRes]) => {
+      setModelName(data.name);
+      const loadedDiagrams: Diagram[] = data.diagrams || [];
+      setDiagrams(loadedDiagrams);
+      const counts = countsRes.data?.componentCounts || {};
+      setCommentCounts(counts);
 
-        const firstId = loadedDiagrams.length > 0 ? loadedDiagrams[0].id : null;
-        selectDiagram(firstId, loadedDiagrams);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load threat model:', err);
-        setLoading(false);
-      });
+      const firstId = loadedDiagrams.length > 0 ? loadedDiagrams[0].id : null;
+      selectDiagram(firstId, loadedDiagrams, counts);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('Failed to load threat model:', err);
+      setLoading(false);
+    });
   }, [id, selectDiagram]);
 
   useEffect(() => {
@@ -176,7 +255,7 @@ export function DfdCanvas() {
 
   const handleTabSelect = (_event: unknown, data: { value: unknown }) => {
     const diagramId = data.value as string;
-    selectDiagram(diagramId, diagrams);
+    selectDiagram(diagramId, diagrams, commentCounts);
   };
 
   const handleCreateDiagram = async () => {
@@ -190,7 +269,7 @@ export function DfdCanvas() {
     const { data } = await res.json();
     const updated = [...diagrams, data as Diagram];
     setDiagrams(updated);
-    selectDiagram(data.id, updated);
+    selectDiagram(data.id, updated, commentCounts);
     setNewDiagramDialogOpen(false);
     setNewDiagramName('');
   };
@@ -222,6 +301,53 @@ export function DfdCanvas() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
+  const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
+    const rect = (_event.target as HTMLElement).getBoundingClientRect();
+    setActionNode({ nodeId: node.id, x: rect.right + 8, y: rect.top });
+    setCommentPanelNode(null);
+  }, []);
+
+  const openCommentPanel = useCallback(async (nodeId: string, label: string, x: number, y: number) => {
+    setActionNode(null);
+    setCommentPanelNode({ nodeId, label, x, y });
+    setNewCommentText('');
+    try {
+      const { data } = await api.getComments({ componentId: nodeId });
+      setNodeComments(data || []);
+    } catch {
+      setNodeComments([]);
+    }
+  }, []);
+
+  const handleSubmitNodeComment = useCallback(async () => {
+    if (!commentPanelNode || !newCommentText.trim()) return;
+    setSubmittingComment(true);
+    try {
+      await api.createComment({
+        body: newCommentText,
+        author: 'Current User',
+        componentId: commentPanelNode.nodeId,
+      });
+      setNewCommentText('');
+      const { data } = await api.getComments({ componentId: commentPanelNode.nodeId });
+      setNodeComments(data || []);
+      await loadCommentCounts();
+      // Update badge on nodes
+      const updated = { ...commentCounts };
+      updated[commentPanelNode.nodeId] = (updated[commentPanelNode.nodeId] || 0) + 1;
+      setCommentCounts(updated);
+    } catch (err) {
+      console.error('Failed to submit comment:', err);
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [commentPanelNode, newCommentText, commentCounts, loadCommentCounts]);
+
+  const handlePaneClick = useCallback(() => {
+    setActionNode(null);
+    setCommentPanelNode(null);
+  }, []);
 
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
@@ -297,6 +423,8 @@ export function DfdCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
           fitView
           snapToGrid
@@ -351,6 +479,93 @@ export function DfdCanvas() {
             )}
           </Panel>
         </ReactFlow>
+
+        {/* Node action bar */}
+        {actionNode && (
+          <div
+            className={styles.nodeActionBar}
+            style={{ top: actionNode.y, left: actionNode.x }}
+          >
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<Comment20Regular />}
+              onClick={() => {
+                const node = nodes.find((n) => n.id === actionNode.nodeId);
+                const label = (node?.data as any)?.label || 'Component';
+                openCommentPanel(actionNode.nodeId, label, actionNode.x, actionNode.y);
+              }}
+            >
+              Comment
+            </Button>
+          </div>
+        )}
+
+        {/* Comment panel for a node */}
+        {commentPanelNode && (
+          <div
+            className={styles.commentPanel}
+            style={{ top: commentPanelNode.y, left: commentPanelNode.x }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <Text weight="semibold" size={300}>
+                Comments on {commentPanelNode.label}
+              </Text>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Dismiss16Regular />}
+                onClick={() => setCommentPanelNode(null)}
+              />
+            </div>
+
+            {nodeComments.length === 0 && (
+              <Text size={200} style={{ opacity: 0.6, display: 'block', marginBottom: '12px' }}>
+                No comments yet.
+              </Text>
+            )}
+
+            {nodeComments.map((c) => (
+              <div key={c.id} className={styles.commentThread}>
+                <div className={styles.commentMeta}>
+                  <Text size={100} weight="semibold">{c.author}</Text>
+                  <Text size={100}>{new Date(c.createdAt).toLocaleString()}</Text>
+                  {c.resolved && <Badge appearance="outline" color="success" size="small">Resolved</Badge>}
+                </div>
+                <div className={styles.commentBody}>
+                  <Text size={200}>{c.body}</Text>
+                </div>
+                {c.replies?.map((r) => (
+                  <div key={r.id} className={styles.reply}>
+                    <div className={styles.commentMeta}>
+                      <Text size={100} weight="semibold">{r.author}</Text>
+                      <Text size={100}>{new Date(r.createdAt).toLocaleString()}</Text>
+                    </div>
+                    <Text size={200}>{r.body}</Text>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <Divider style={{ margin: '8px 0' }} />
+            <Textarea
+              placeholder="Add a comment..."
+              value={newCommentText}
+              onChange={(_e, d) => setNewCommentText(d.value)}
+              style={{ width: '100%' }}
+              rows={2}
+            />
+            <Button
+              appearance="primary"
+              size="small"
+              onClick={handleSubmitNodeComment}
+              disabled={!newCommentText.trim() || submittingComment}
+              style={{ marginTop: '8px' }}
+            >
+              {submittingComment ? 'Submitting...' : 'Add Comment'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

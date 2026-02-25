@@ -58,6 +58,8 @@ export const api = {
     request<any>('/comments', { method: 'POST', body: JSON.stringify(data) }),
   resolveComment: (id: string) =>
     request<any>(`/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ resolved: true }) }),
+  getCommentCounts: (threatModelId: string) =>
+    request<any>(`/comments/counts?threatModelId=${threatModelId}`),
 
   // Reviews
   listReviews: (threatModelId: string) =>
