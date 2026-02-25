@@ -55,10 +55,21 @@ export interface ThreatModel {
   status: ModelStatus;
   createdAt: string;
   updatedAt: string;
-  components?: Component[];
-  dataFlows?: DataFlow[];
+  diagrams?: Diagram[];
   threats?: Threat[];
   reviews?: Review[];
+}
+
+export interface Diagram {
+  id: string;
+  name: string;
+  description?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  threatModelId: string;
+  components?: Component[];
+  dataFlows?: DataFlow[];
 }
 
 export interface Component {
@@ -70,7 +81,7 @@ export interface Component {
   positionX: number;
   positionY: number;
   metadata?: Record<string, unknown>;
-  threatModelId: string;
+  diagramId: string;
 }
 
 export interface DataFlow {
@@ -82,7 +93,7 @@ export interface DataFlow {
   metadata?: Record<string, unknown>;
   sourceId: string;
   targetId: string;
-  threatModelId: string;
+  diagramId: string;
 }
 
 export interface Threat {

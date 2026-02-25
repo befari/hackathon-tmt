@@ -67,13 +67,29 @@ model ThreatModel {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  components   Component[]
-  dataFlows    DataFlow[]
+  diagrams     Diagram[]
   threats      Threat[]
   chatMessages ChatMessage[]
   reviews      Review[]
 
   @@map("threat_models")
+}
+
+model Diagram {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "Enrollment", "Authentication"
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  components Component[]
+  dataFlows  DataFlow[]
+
+  @@map("diagrams")
 }
 
 model Component {
@@ -86,8 +102,8 @@ model Component {
   positionY   Float         @default(0)
   metadata    Json?
 
-  threatModelId String
-  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  diagramId String
+  diagram   Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
 
   outgoingFlows DataFlow[] @relation("source")
   incomingFlows DataFlow[] @relation("target")
@@ -105,12 +121,12 @@ model DataFlow {
   crossesTrustBoundary Boolean @default(false)
   metadata             Json?
 
-  sourceId      String
-  source        Component @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetId      String
-  target        Component @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
-  threatModelId String
-  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  sourceId  String
+  source    Component @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId  String
+  target    Component @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
+  diagramId String
+  diagram   Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
 
   threats  Threat[]
   comments Comment[]

@@ -9,7 +9,7 @@ threatModelRouter.get('/', async (_req: Request, res: Response) => {
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: {
-        select: { components: true, threats: true, reviews: true },
+        select: { diagrams: true, threats: true, reviews: true },
       },
     },
   });
@@ -21,8 +21,13 @@ threatModelRouter.get('/:id', async (req: Request, res: Response) => {
   const model = await prisma.threatModel.findUnique({
     where: { id: req.params.id as string },
     include: {
-      components: true,
-      dataFlows: true,
+      diagrams: {
+        orderBy: { order: 'asc' },
+        include: {
+          components: true,
+          dataFlows: true,
+        },
+      },
       threats: {
         include: {
           comments: {
@@ -75,20 +80,55 @@ threatModelRouter.delete('/:id', async (req: Request, res: Response) => {
   res.status(204).send();
 });
 
-// Get components for a threat model
-threatModelRouter.get('/:id/components', async (req: Request, res: Response) => {
-  const components = await prisma.component.findMany({
-    where: { threatModelId: req.params.id as string },
-    include: {
-      outgoingFlows: true,
-      incomingFlows: true,
+// --- Diagram routes ---
+
+// Create a diagram for a threat model
+threatModelRouter.post('/:id/diagrams', async (req: Request, res: Response) => {
+  const { name, description } = req.body;
+
+  const diagram = await prisma.diagram.create({
+    data: {
+      name,
+      description,
+      threatModelId: req.params.id as string,
     },
   });
-  res.json({ data: components });
+
+  res.status(201).json({ data: diagram });
 });
 
-// Add a component to a threat model
-threatModelRouter.post('/:id/components', async (req: Request, res: Response) => {
+// List diagrams for a threat model
+threatModelRouter.get('/:id/diagrams', async (req: Request, res: Response) => {
+  const diagrams = await prisma.diagram.findMany({
+    where: { threatModelId: req.params.id as string },
+    orderBy: { order: 'asc' },
+  });
+  res.json({ data: diagrams });
+});
+
+// Get a diagram with its components and data flows
+threatModelRouter.get('/:id/diagrams/:diagramId', async (req: Request, res: Response) => {
+  const diagram = await prisma.diagram.findUnique({
+    where: { id: req.params.diagramId as string },
+    include: {
+      components: {
+        include: { outgoingFlows: true, incomingFlows: true },
+      },
+      dataFlows: {
+        include: { source: true, target: true },
+      },
+    },
+  });
+
+  if (!diagram) {
+    res.status(404).json({ error: 'Diagram not found' });
+    return;
+  }
+  res.json({ data: diagram });
+});
+
+// Add a component to a diagram
+threatModelRouter.post('/:id/diagrams/:diagramId/components', async (req: Request, res: Response) => {
   const { name, type, description, sourceFiles, positionX, positionY, metadata } = req.body;
 
   const component = await prisma.component.create({
@@ -100,24 +140,15 @@ threatModelRouter.post('/:id/components', async (req: Request, res: Response) =>
       positionX: positionX || 0,
       positionY: positionY || 0,
       metadata,
-      threatModelId: req.params.id as string,
+      diagramId: req.params.diagramId as string,
     },
   });
 
   res.status(201).json({ data: component });
 });
 
-// Get data flows for a threat model
-threatModelRouter.get('/:id/data-flows', async (req: Request, res: Response) => {
-  const flows = await prisma.dataFlow.findMany({
-    where: { threatModelId: req.params.id as string },
-    include: { source: true, target: true },
-  });
-  res.json({ data: flows });
-});
-
-// Add a data flow to a threat model
-threatModelRouter.post('/:id/data-flows', async (req: Request, res: Response) => {
+// Add a data flow to a diagram
+threatModelRouter.post('/:id/diagrams/:diagramId/data-flows', async (req: Request, res: Response) => {
   const { label, protocol, dataClassification, crossesTrustBoundary, sourceId, targetId, metadata } = req.body;
 
   const flow = await prisma.dataFlow.create({
@@ -129,9 +160,31 @@ threatModelRouter.post('/:id/data-flows', async (req: Request, res: Response) =>
       sourceId,
       targetId,
       metadata,
-      threatModelId: req.params.id as string,
+      diagramId: req.params.diagramId as string,
     },
   });
 
   res.status(201).json({ data: flow });
+});
+
+// Update a diagram
+threatModelRouter.patch('/diagrams/:diagramId', async (req: Request, res: Response) => {
+  const { name, description, order } = req.body;
+
+  const diagram = await prisma.diagram.update({
+    where: { id: req.params.diagramId as string },
+    data: {
+      ...(name && { name }),
+      ...(description !== undefined && { description }),
+      ...(order !== undefined && { order }),
+    },
+  });
+
+  res.json({ data: diagram });
+});
+
+// Delete a diagram
+threatModelRouter.delete('/diagrams/:diagramId', async (req: Request, res: Response) => {
+  await prisma.diagram.delete({ where: { id: req.params.diagramId as string } });
+  res.status(204).send();
 });

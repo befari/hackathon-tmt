@@ -29,15 +29,18 @@ export const api = {
   deleteThreatModel: (id: string) =>
     request<any>(`/threat-models/${id}`, { method: 'DELETE' }),
 
-  // Components
-  getComponents: (modelId: string) => request<any>(`/threat-models/${modelId}/components`),
-  createComponent: (modelId: string, data: Record<string, any>) =>
-    request<any>(`/threat-models/${modelId}/components`, { method: 'POST', body: JSON.stringify(data) }),
+  // Diagrams
+  listDiagrams: (modelId: string) => request<any>(`/threat-models/${modelId}/diagrams`),
+  createDiagram: (modelId: string, data: { name: string; description?: string }) =>
+    request<any>(`/threat-models/${modelId}/diagrams`, { method: 'POST', body: JSON.stringify(data) }),
 
-  // Data Flows
-  getDataFlows: (modelId: string) => request<any>(`/threat-models/${modelId}/data-flows`),
-  createDataFlow: (modelId: string, data: Record<string, any>) =>
-    request<any>(`/threat-models/${modelId}/data-flows`, { method: 'POST', body: JSON.stringify(data) }),
+  // Components (scoped to diagram)
+  addComponent: (modelId: string, diagramId: string, data: Record<string, any>) =>
+    request<any>(`/threat-models/${modelId}/diagrams/${diagramId}/components`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Data Flows (scoped to diagram)
+  addDataFlow: (modelId: string, diagramId: string, data: Record<string, any>) =>
+    request<any>(`/threat-models/${modelId}/diagrams/${diagramId}/data-flows`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Threats
   listThreats: (params?: Record<string, string>) => {

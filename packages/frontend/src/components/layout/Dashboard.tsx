@@ -164,8 +164,8 @@ export function Dashboard() {
                 <Badge appearance="outline" color={statusColor[model.status] || 'informative'}>
                   {model.status}
                 </Badge>
-                {model._count?.components !== undefined && (
-                  <Badge appearance="outline">{model._count.components} components</Badge>
+                {model._count?.diagrams !== undefined && (
+                  <Badge appearance="outline">{model._count.diagrams} diagrams</Badge>
                 )}
                 {model._count?.threats !== undefined && (
                   <Badge appearance="outline">{model._count.threats} threats</Badge>

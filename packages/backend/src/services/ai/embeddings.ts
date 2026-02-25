@@ -18,7 +18,7 @@ export async function findRelevantCode(
 ): Promise<CodeChunk[]> {
   // For MVP: search through component source files and descriptions
   const components = await prisma.component.findMany({
-    where: { threatModelId },
+    where: { diagram: { threatModelId } },
     select: { name: true, description: true, sourceFiles: true },
   });
 
