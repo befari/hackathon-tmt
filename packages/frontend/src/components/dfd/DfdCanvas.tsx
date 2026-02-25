@@ -7,7 +7,6 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   Connection,
   Panel,
   BackgroundVariant,
@@ -533,8 +532,32 @@ export function DfdCanvas() {
   }, []);
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
-    [setEdges]
+    async (connection: Connection) => {
+      if (!id || !selectedDiagramId || !connection.source || !connection.target) return;
+      try {
+        const { data } = await api.addDataFlow(id, selectedDiagramId, {
+          label: 'New Flow',
+          sourceId: connection.source,
+          targetId: connection.target,
+        });
+        // Use the DB-generated ID so delete works
+        const newEdge: Edge = {
+          id: data.id,
+          source: connection.source,
+          target: connection.target,
+          sourceHandle: connection.sourceHandle,
+          targetHandle: connection.targetHandle,
+          label: data.label,
+          style: { stroke: '#6c757d', strokeWidth: 2 },
+          labelStyle: { fontSize: 11 },
+          data: { protocol: '', dataClassification: '' },
+        };
+        setEdges((eds) => [...eds, newEdge]);
+      } catch (err) {
+        console.error('Failed to create data flow:', err);
+      }
+    },
+    [id, selectedDiagramId, setEdges]
   );
 
   if (loading) {
@@ -614,8 +637,7 @@ export function DfdCanvas() {
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           fitView
-          snapToGrid
-          snapGrid={[15, 15]}
+          snapToGrid={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls style={{ backgroundColor: '#2d2d2d', borderColor: '#444', borderRadius: '8px' }} />
@@ -665,7 +687,7 @@ export function DfdCanvas() {
               </Text>
             )}
           </Panel>
-          <Panel position="top-left" style={{ top: 'auto', bottom: '60px' }}>
+          <Panel position="top-right" style={{ top: '10px', right: (selectedNode || selectedEdge) ? '310px' : '10px', transition: 'right 0.2s ease' }}>
             <ComponentPalette />
           </Panel>
         </ReactFlow>

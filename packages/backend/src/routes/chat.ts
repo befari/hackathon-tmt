@@ -1,21 +1,24 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prisma/client.js';
 import { chatWithContext } from '../services/ai/embeddings.js';
+
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 export const chatRouter = Router();
 
 // Get chat history for a threat model
-chatRouter.get('/:threatModelId', async (req: Request, res: Response) => {
+chatRouter.get('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
   const messages = await prisma.chatMessage.findMany({
     where: { threatModelId: req.params.threatModelId as string },
     orderBy: { timestamp: 'asc' },
   });
 
   res.json({ data: messages });
-});
+}));
 
 // Send a message with AI response
-chatRouter.post('/:threatModelId', async (req: Request, res: Response) => {
+chatRouter.post('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
   const { message } = req.body;
   const { threatModelId } = req.params as { threatModelId: string };
 
@@ -56,4 +59,4 @@ chatRouter.post('/:threatModelId', async (req: Request, res: Response) => {
   });
 
   res.json({ data: { userMessage, assistantMessage } });
-});
+}));

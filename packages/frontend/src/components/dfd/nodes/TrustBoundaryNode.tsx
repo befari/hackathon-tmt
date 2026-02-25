@@ -32,8 +32,10 @@ export function TrustBoundaryNode({ data }: NodeProps) {
 
   return (
     <>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Top} id="top-src" />
+      <Handle type="target" position={Position.Top} id="top-tgt" />
+      <Handle type="source" position={Position.Left} id="left-src" />
+      <Handle type="target" position={Position.Left} id="left-tgt" />
       <div className={styles.wrapper}>
         <div className={styles.node}>
           <Text size={200} weight="semibold">
@@ -46,8 +48,10 @@ export function TrustBoundaryNode({ data }: NodeProps) {
           </div>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} id="bottom-src" />
+      <Handle type="target" position={Position.Bottom} id="bottom-tgt" />
+      <Handle type="source" position={Position.Right} id="right-src" />
+      <Handle type="target" position={Position.Right} id="right-tgt" />
     </>
   );
 }

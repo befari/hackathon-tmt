@@ -1,10 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prisma/client.js';
+
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 export const threatRouter = Router();
 
 // List threats (with optional filters)
-threatRouter.get('/', async (req: Request, res: Response) => {
+threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
   const { threatModelId, strideCategory, severity, status } = req.query;
 
   const threats = await prisma.threat.findMany({
@@ -27,10 +30,10 @@ threatRouter.get('/', async (req: Request, res: Response) => {
   threats.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
   res.json({ data: threats });
-});
+}));
 
 // Get a single threat
-threatRouter.get('/:id', async (req: Request, res: Response) => {
+threatRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const threat = await prisma.threat.findUnique({
     where: { id: req.params.id as string },
     include: {
@@ -51,10 +54,10 @@ threatRouter.get('/:id', async (req: Request, res: Response) => {
     return;
   }
   res.json({ data: threat });
-});
+}));
 
 // Update a threat (status, mitigation notes, severity)
-threatRouter.patch('/:id', async (req: Request, res: Response) => {
+threatRouter.patch('/:id', asyncHandler(async (req: Request, res: Response) => {
   const { status, mitigationNotes, severity, title, description } = req.body;
 
   const threat = await prisma.threat.update({
@@ -69,10 +72,10 @@ threatRouter.patch('/:id', async (req: Request, res: Response) => {
   });
 
   res.json({ data: threat });
-});
+}));
 
 // Delete a threat
-threatRouter.delete('/:id', async (req: Request, res: Response) => {
+threatRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   await prisma.threat.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
-});
+}));

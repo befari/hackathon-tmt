@@ -1,10 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prisma/client.js';
+
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 export const reviewRouter = Router();
 
 // List reviews for a threat model
-reviewRouter.get('/', async (req: Request, res: Response) => {
+reviewRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
   const { threatModelId } = req.query;
 
   const reviews = await prisma.review.findMany({
@@ -18,10 +21,10 @@ reviewRouter.get('/', async (req: Request, res: Response) => {
   });
 
   res.json({ data: reviews });
-});
+}));
 
 // Get a single review with comments
-reviewRouter.get('/:id', async (req: Request, res: Response) => {
+reviewRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const review = await prisma.review.findUnique({
     where: { id: req.params.id as string },
     include: {
@@ -43,10 +46,10 @@ reviewRouter.get('/:id', async (req: Request, res: Response) => {
     return;
   }
   res.json({ data: review });
-});
+}));
 
 // Create a review
-reviewRouter.post('/', async (req: Request, res: Response) => {
+reviewRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { name, reviewerName, threatModelId } = req.body;
 
   const review = await prisma.review.create({
@@ -54,10 +57,10 @@ reviewRouter.post('/', async (req: Request, res: Response) => {
   });
 
   res.status(201).json({ data: review });
-});
+}));
 
 // Update a review (complete, cancel)
-reviewRouter.patch('/:id', async (req: Request, res: Response) => {
+reviewRouter.patch('/:id', asyncHandler(async (req: Request, res: Response) => {
   const { status, reviewerName } = req.body;
 
   const review = await prisma.review.update({
@@ -70,4 +73,4 @@ reviewRouter.patch('/:id', async (req: Request, res: Response) => {
   });
 
   res.json({ data: review });
-});
+}));
