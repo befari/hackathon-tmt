@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef, type DragEvent, type KeyboardEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   ReactFlow,
@@ -14,6 +14,7 @@ import {
   type Node,
   type Edge,
   type NodeMouseHandler,
+  type EdgeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './dfd-dark.css';
@@ -47,6 +48,8 @@ import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
 import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
+import { ComponentPalette } from './ComponentPalette';
+import { PropertyPanel } from './PropertyPanel';
 import { api } from '../../api/client';
 import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
 
@@ -178,6 +181,10 @@ function diagramToNodesAndEdges(
       strokeWidth: 2,
     },
     labelStyle: { fontSize: 11 },
+    data: {
+      protocol: flow.protocol || '',
+      dataClassification: flow.dataClassification || '',
+    },
   }));
 
   return { flowNodes, flowEdges };
@@ -205,6 +212,12 @@ export function DfdCanvas() {
   const [nodeComments, setNodeComments] = useState<TmtComment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Selection & property panel state
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const loadCommentCounts = useCallback(async () => {
     if (!id) return;
@@ -306,6 +319,15 @@ export function DfdCanvas() {
     const rect = (_event.target as HTMLElement).getBoundingClientRect();
     setActionNode({ nodeId: node.id, x: rect.right + 8, y: rect.top });
     setCommentPanelNode(null);
+    setSelectedNode(node);
+    setSelectedEdge(null);
+  }, []);
+
+  const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
+    setSelectedEdge(edge);
+    setSelectedNode(null);
+    setActionNode(null);
+    setCommentPanelNode(null);
   }, []);
 
   const openCommentPanel = useCallback(async (nodeId: string, label: string, x: number, y: number) => {
@@ -347,6 +369,167 @@ export function DfdCanvas() {
   const handlePaneClick = useCallback(() => {
     setActionNode(null);
     setCommentPanelNode(null);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+  }, []);
+
+  // Drag-and-drop from palette
+  const onDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    async (event: DragEvent) => {
+      event.preventDefault();
+      const componentType = event.dataTransfer.getData('application/dfd-component-type');
+      const nodeType = event.dataTransfer.getData('application/dfd-node-type');
+      if (!componentType || !nodeType || !id || !selectedDiagramId) return;
+
+      const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+      if (!bounds) return;
+
+      // Use the wrapper bounds to approximate canvas position
+      const positionX = event.clientX - bounds.left;
+      const positionY = event.clientY - bounds.top;
+      const defaultName = componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+      try {
+        const { data } = await api.addComponent(id, selectedDiagramId, {
+          name: defaultName,
+          type: componentType,
+          positionX,
+          positionY,
+        });
+        const newNode: Node = {
+          id: data.id,
+          type: nodeType,
+          position: { x: positionX, y: positionY },
+          data: {
+            label: data.name,
+            description: data.description || '',
+            sourceFiles: data.sourceFiles || [],
+            componentType: data.type,
+            commentCount: 0,
+          },
+        };
+        setNodes((nds) => [...nds, newNode]);
+      } catch (err) {
+        console.error('Failed to add component:', err);
+      }
+    },
+    [id, selectedDiagramId, setNodes]
+  );
+
+  // Persist node position after drag
+  const onNodeDragStop: NodeMouseHandler = useCallback((_event, node) => {
+    api.updateComponent(node.id, {
+      positionX: node.position.x,
+      positionY: node.position.y,
+    }).catch((err) => console.error('Failed to persist position:', err));
+  }, []);
+
+  // Delete selected element
+  const handleDeleteSelected = useCallback(async () => {
+    try {
+      if (selectedNode) {
+        await api.deleteComponent(selectedNode.id);
+        setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+        setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
+        setSelectedNode(null);
+      } else if (selectedEdge) {
+        await api.deleteDataFlow(selectedEdge.id);
+        setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
+        setSelectedEdge(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete:', err);
+    }
+    setDeleteDialogOpen(false);
+  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+
+  // Keyboard delete
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && (selectedNode || selectedEdge)) {
+        event.preventDefault();
+        setDeleteDialogOpen(true);
+      }
+    },
+    [selectedNode, selectedEdge]
+  );
+
+  // Property panel callbacks
+  const handleNodeUpdated = useCallback(
+    (nodeId: string, data: Record<string, any>) => {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== nodeId) return n;
+          const nodeType = componentTypeToNodeType(data.type || (n.data as any).componentType);
+          return {
+            ...n,
+            type: nodeType,
+            data: {
+              ...n.data,
+              label: data.name ?? (n.data as any).label,
+              description: data.description ?? (n.data as any).description,
+              sourceFiles: data.sourceFiles ?? (n.data as any).sourceFiles,
+              componentType: data.type ?? (n.data as any).componentType,
+            },
+          };
+        })
+      );
+      setSelectedNode(null);
+    },
+    [setNodes]
+  );
+
+  const handleEdgeUpdated = useCallback(
+    (edgeId: string, data: Record<string, any>) => {
+      setEdges((eds) =>
+        eds.map((e) => {
+          if (e.id !== edgeId) return e;
+          return {
+            ...e,
+            label: data.label ?? e.label,
+            animated: data.crossesTrustBoundary ?? e.animated,
+            style: {
+              stroke: data.crossesTrustBoundary ? '#e74c3c' : '#6c757d',
+              strokeWidth: 2,
+            },
+            data: {
+              ...e.data,
+              protocol: data.protocol ?? (e.data as any)?.protocol,
+              dataClassification: data.dataClassification ?? (e.data as any)?.dataClassification,
+            },
+          };
+        })
+      );
+      setSelectedEdge(null);
+    },
+    [setEdges]
+  );
+
+  const handleNodeDeleted = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+      setSelectedNode(null);
+    },
+    [setNodes, setEdges]
+  );
+
+  const handleEdgeDeleted = useCallback(
+    (edgeId: string) => {
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+      setSelectedEdge(null);
+    },
+    [setEdges]
+  );
+
+  const closePropertyPanel = useCallback(() => {
+    setSelectedNode(null);
+    setSelectedEdge(null);
   }, []);
 
   const onConnect = useCallback(
@@ -416,7 +599,7 @@ export function DfdCanvas() {
           </DialogSurface>
         </Dialog>
       </div>
-      <div className={styles.container}>
+      <div className={styles.container} ref={reactFlowWrapper} onKeyDown={handleKeyDown} tabIndex={-1}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -424,7 +607,11 @@ export function DfdCanvas() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
           onPaneClick={handlePaneClick}
+          onNodeDragStop={onNodeDragStop}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           fitView
           snapToGrid
@@ -477,6 +664,9 @@ export function DfdCanvas() {
                 {uploadStatus}
               </Text>
             )}
+          </Panel>
+          <Panel position="top-left" style={{ top: 'auto', bottom: '60px' }}>
+            <ComponentPalette />
           </Panel>
         </ReactFlow>
 
@@ -566,6 +756,42 @@ export function DfdCanvas() {
             </Button>
           </div>
         )}
+        {/* Property panel */}
+        {(selectedNode || selectedEdge) && (
+          <PropertyPanel
+            selectedNode={selectedNode}
+            selectedEdge={selectedEdge}
+            onClose={closePropertyPanel}
+            onNodeUpdated={handleNodeUpdated}
+            onEdgeUpdated={handleEdgeUpdated}
+            onNodeDeleted={handleNodeDeleted}
+            onEdgeDeleted={handleEdgeDeleted}
+          />
+        )}
+
+        {/* Keyboard delete confirmation */}
+        <Dialog
+          open={deleteDialogOpen}
+          onOpenChange={(_e, data) => setDeleteDialogOpen(data.open)}
+        >
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogContent>
+                Are you sure you want to delete this {selectedNode ? 'component' : 'data flow'}?
+                {selectedNode && ' All connected data flows will also be removed.'}
+              </DialogContent>
+              <DialogActions>
+                <DialogTrigger>
+                  <Button appearance="secondary">Cancel</Button>
+                </DialogTrigger>
+                <Button appearance="primary" onClick={handleDeleteSelected}>
+                  Delete
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
       </div>
     </div>
   );

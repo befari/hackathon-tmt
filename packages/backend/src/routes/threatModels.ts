@@ -188,3 +188,57 @@ threatModelRouter.delete('/diagrams/:diagramId', async (req: Request, res: Respo
   await prisma.diagram.delete({ where: { id: req.params.diagramId as string } });
   res.status(204).send();
 });
+
+// --- Component routes (by component ID) ---
+
+// Update a component
+threatModelRouter.patch('/components/:id', async (req: Request, res: Response) => {
+  const { name, type, description, sourceFiles, positionX, positionY, metadata } = req.body;
+
+  const component = await prisma.component.update({
+    where: { id: req.params.id as string },
+    data: {
+      ...(name !== undefined && { name }),
+      ...(type !== undefined && { type }),
+      ...(description !== undefined && { description }),
+      ...(sourceFiles !== undefined && { sourceFiles }),
+      ...(positionX !== undefined && { positionX }),
+      ...(positionY !== undefined && { positionY }),
+      ...(metadata !== undefined && { metadata }),
+    },
+  });
+
+  res.json({ data: component });
+});
+
+// Delete a component (cascades data flows via Prisma schema)
+threatModelRouter.delete('/components/:id', async (req: Request, res: Response) => {
+  await prisma.component.delete({ where: { id: req.params.id as string } });
+  res.status(204).send();
+});
+
+// --- Data Flow routes (by data flow ID) ---
+
+// Update a data flow
+threatModelRouter.patch('/data-flows/:id', async (req: Request, res: Response) => {
+  const { label, protocol, dataClassification, crossesTrustBoundary, metadata } = req.body;
+
+  const flow = await prisma.dataFlow.update({
+    where: { id: req.params.id as string },
+    data: {
+      ...(label !== undefined && { label }),
+      ...(protocol !== undefined && { protocol }),
+      ...(dataClassification !== undefined && { dataClassification }),
+      ...(crossesTrustBoundary !== undefined && { crossesTrustBoundary }),
+      ...(metadata !== undefined && { metadata }),
+    },
+  });
+
+  res.json({ data: flow });
+});
+
+// Delete a data flow
+threatModelRouter.delete('/data-flows/:id', async (req: Request, res: Response) => {
+  await prisma.dataFlow.delete({ where: { id: req.params.id as string } });
+  res.status(204).send();
+});

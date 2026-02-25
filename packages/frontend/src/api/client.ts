@@ -42,6 +42,18 @@ export const api = {
   addDataFlow: (modelId: string, diagramId: string, data: Record<string, any>) =>
     request<any>(`/threat-models/${modelId}/diagrams/${diagramId}/data-flows`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // Component CRUD (by component ID)
+  updateComponent: (id: string, data: Record<string, any>) =>
+    request<any>(`/threat-models/components/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteComponent: (id: string) =>
+    request<any>(`/threat-models/components/${id}`, { method: 'DELETE' }),
+
+  // Data Flow CRUD (by data flow ID)
+  updateDataFlow: (id: string, data: Record<string, any>) =>
+    request<any>(`/threat-models/data-flows/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteDataFlow: (id: string) =>
+    request<any>(`/threat-models/data-flows/${id}`, { method: 'DELETE' }),
+
   // Threats
   listThreats: (params?: Record<string, string>) => {
     const query = params ? `?${new URLSearchParams(params)}` : '';
