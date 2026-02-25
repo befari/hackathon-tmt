@@ -123,4 +123,25 @@ export const api = {
     request<any>(`/threat-models/${modelId}/share-links`, { method: 'POST', body: JSON.stringify(data) }),
   deleteShareLink: (modelId: string, linkId: string) =>
     request<any>(`/threat-models/${modelId}/share-links/${linkId}`, { method: 'DELETE' }),
+
+  // TM7 Import
+  importTm7: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    if (tokenProvider) {
+      const token = await tokenProvider();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE}/tm7/import`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || 'Import failed');
+    }
+    return res.json();
+  },
 };

@@ -7,6 +7,7 @@ import { commentRouter } from './routes/comments.js';
 import { reviewRouter } from './routes/reviews.js';
 import { chatRouter } from './routes/chat.js';
 import { uploadRouter } from './routes/upload.js';
+import { tm7Router } from './routes/tm7.js';
 import { authRouter } from './routes/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requireAuth } from './middleware/auth.js';
@@ -42,6 +43,7 @@ app.use('/api/comments', requireAuth, commentRouter);
 app.use('/api/reviews', requireAuth, reviewRouter);
 app.use('/api/chat', requireAuth, chatRouter);
 app.use('/api/upload', requireAuth, uploadRouter);
+app.use('/api/tm7', requireAuth, tm7Router);
 
 // Error handler
 app.use(errorHandler);

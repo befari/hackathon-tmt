@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -18,8 +18,9 @@ import {
   Input,
   Textarea,
 } from '@fluentui/react-components';
-import { Add20Regular, Shield20Regular } from '@fluentui/react-icons';
+import { Add20Regular, Shield20Regular, ArrowUpload20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
+import { api } from '../../api/client';
 
 const useStyles = makeStyles({
   page: {
@@ -68,6 +69,9 @@ export function Dashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/threat-models')
@@ -89,6 +93,22 @@ export function Dashboard() {
     navigate(`/model/${data.id}`);
   };
 
+  const handleImportTm7 = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const result = await api.importTm7(file);
+      navigate(`/model/${result.threatModel.id}`);
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      alert(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const statusColor: Record<string, 'informative' | 'warning' | 'success' | 'important'> = {
     DRAFT: 'informative',
     ANALYZING: 'warning',
@@ -105,7 +125,23 @@ export function Dashboard() {
             Threat Models
           </Text>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".tm7"
+            style={{ display: 'none' }}
+            onChange={handleImportTm7}
+          />
+          <Button
+            appearance="secondary"
+            icon={<ArrowUpload20Regular />}
+            disabled={importing}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {importing ? 'Importing…' : 'Import .tm7'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
           <DialogTrigger>
             <Button appearance="primary" icon={<Add20Regular />}>
               New Threat Model
@@ -140,6 +176,7 @@ export function Dashboard() {
             </DialogBody>
           </DialogSurface>
         </Dialog>
+        </div>
       </div>
 
       {models.length === 0 ? (
