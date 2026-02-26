@@ -52,6 +52,7 @@ import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
 import { ComponentPalette } from './ComponentPalette';
 import { PropertyPanel } from './PropertyPanel';
+import { AIRatingWidget } from './AIRatingWidget';
 import { ShareDialog } from '../sharing/ShareDialog';
 import { api } from '../../api/client';
 import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
@@ -202,6 +203,7 @@ export function DfdCanvas() {
   const [modelName, setModelName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [diagrams, setDiagrams] = useState<Diagram[]>([]);
   const [selectedDiagramId, setSelectedDiagramId] = useState<string | null>(null);
@@ -312,6 +314,7 @@ export function DfdCanvas() {
       const { data, error } = await res.json();
       if (error) throw new Error(error);
       setUploadStatus(data.message);
+      if (data.generationId) setAiGenerationId(data.generationId);
       // Reload the model to show generated DFD
       loadModel();
     } catch (err: any) {
@@ -391,22 +394,34 @@ export function DfdCanvas() {
       event.preventDefault();
       const componentType = event.dataTransfer.getData('application/dfd-component-type');
       const nodeType = event.dataTransfer.getData('application/dfd-node-type');
+      const subtype = event.dataTransfer.getData('application/dfd-component-subtype') || '';
       if (!componentType || !nodeType || !id || !selectedDiagramId) return;
 
       const bounds = reactFlowWrapper.current?.getBoundingClientRect();
       if (!bounds) return;
 
-      // Use the wrapper bounds to approximate canvas position
       const positionX = event.clientX - bounds.left;
       const positionY = event.clientY - bounds.top;
-      const defaultName = componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+      // Generate a more descriptive default name based on subtype
+      const subtypeLabels: Record<string, string> = {
+        service: 'Service', daemon: 'Daemon', webapp: 'Web App', library: 'Library', system: 'System Process',
+        database: 'Database', filesystem: 'File Store', cache: 'Cache', hardware: 'Hardware Store', config: 'Config File', log: 'Log Store',
+        user: 'User', api: 'External API', webservice: 'Web Service', browser: 'Browser', thirdparty: 'Third-party Service',
+        network: 'Network Boundary', session: 'User Session', process: 'Process Boundary',
+      };
+      const defaultName = subtype
+        ? subtypeLabels[subtype] || componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        : componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       try {
+        const metadata = subtype ? { subtype } : undefined;
         const { data } = await api.addComponent(id, selectedDiagramId, {
           name: defaultName,
           type: componentType,
           positionX,
           positionY,
+          metadata,
         });
         const newNode: Node = {
           id: data.id,
@@ -917,6 +932,13 @@ export function DfdCanvas() {
           </DialogSurface>
         </Dialog>
       </div>
+
+      {aiGenerationId && (
+        <AIRatingWidget
+          generationId={aiGenerationId}
+          onClose={() => setAiGenerationId(null)}
+        />
+      )}
     </div>
   );
 }

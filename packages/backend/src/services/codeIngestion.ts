@@ -33,7 +33,7 @@ interface ExtractedFile {
 export async function processUploadedCode(
   threatModelId: string,
   zipPath: string
-): Promise<{ filesProcessed: number; message: string }> {
+): Promise<{ filesProcessed: number; message: string; generationId?: string }> {
   // Update threat model status
   await prisma.threatModel.update({
     where: { id: threatModelId },
@@ -61,6 +61,7 @@ export async function processUploadedCode(
     return {
       filesProcessed: files.length,
       message: `Analyzed ${files.length} files. Generated ${result.componentsCreated} components, ${result.flowsCreated} data flows, and ${result.threatsCreated} threats.`,
+      generationId: result.generationId || undefined,
     };
   } catch (err) {
     await prisma.threatModel.update({

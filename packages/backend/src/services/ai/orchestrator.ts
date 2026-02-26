@@ -34,6 +34,7 @@ interface AnalysisResult {
   componentsCreated: number;
   flowsCreated: number;
   threatsCreated: number;
+  generationId?: string | null;
 }
 
 export async function analyzeCodebase(
@@ -137,6 +138,7 @@ export async function analyzeCodebase(
     componentsCreated: totalComponents,
     flowsCreated,
     threatsCreated,
+    generationId: (dfd as any)._generationId || null,
   };
 }
 
