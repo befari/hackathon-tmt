@@ -8,11 +8,30 @@ interface Snapshot {
 
 const MAX_HISTORY = 50;
 
+/** Clone state without selection/focus properties so undo only tracks real changes */
 function cloneState(nodes: Node[], edges: Edge[]): Snapshot {
   return {
-    nodes: JSON.parse(JSON.stringify(nodes)),
-    edges: JSON.parse(JSON.stringify(edges)),
+    nodes: nodes.map(({ selected, dragging, ...rest }) => ({ ...rest })) as Node[],
+    edges: edges.map(({ selected, ...rest }) => ({ ...rest })) as Edge[],
   };
+}
+
+/** Check if two snapshots represent the same meaningful state */
+function snapshotsEqual(a: Snapshot, b: Snapshot): boolean {
+  if (a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) return false;
+  // Quick check: compare positions and count
+  for (let i = 0; i < a.nodes.length; i++) {
+    const an = a.nodes[i], bn = b.nodes[i];
+    if (an.id !== bn.id || an.position.x !== bn.position.x || an.position.y !== bn.position.y) return false;
+    if (an.width !== bn.width || an.height !== bn.height) return false;
+  }
+  for (let i = 0; i < a.edges.length; i++) {
+    const ae = a.edges[i], be = b.edges[i];
+    if (ae.id !== be.id || ae.source !== be.source || ae.target !== be.target) return false;
+    if ((ae.data as any)?.bendOffsetX !== (be.data as any)?.bendOffsetX) return false;
+    if ((ae.data as any)?.bendOffsetY !== (be.data as any)?.bendOffsetY) return false;
+  }
+  return true;
 }
 
 /**
@@ -33,7 +52,11 @@ export function useUndoRedo() {
   /** Call BEFORE a mutation with the current nodes/edges */
   const takeSnapshot = useCallback((nodes: Node[], edges: Edge[]) => {
     if (isUndoRedoing.current) return;
-    past.current.push(cloneState(nodes, edges));
+    const snap = cloneState(nodes, edges);
+    // Don't record if nothing meaningful changed
+    const last = past.current[past.current.length - 1];
+    if (last && snapshotsEqual(last, snap)) return;
+    past.current.push(snap);
     if (past.current.length > MAX_HISTORY) past.current.shift();
     futur.current = [];
     bump();

@@ -120,6 +120,12 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     boxShadow: tokens.shadow16,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
+    pointerEvents: 'auto' as const,
+  },
+  nodeActionBarWrapper: {
+    position: 'absolute' as const,
+    zIndex: 10,
+    pointerEvents: 'none' as const,
   },
   commentPanel: {
     position: 'absolute' as const,
@@ -543,14 +549,18 @@ export function DfdCanvas() {
     [id, selectedDiagramId, setNodes, takeSnapshot]
   );
 
+  // Capture pre-drag state for undo (before React Flow moves the node)
+  const onNodeDragStart: NodeMouseHandler = useCallback((_event, _node) => {
+    takeSnapshot(nodesRef.current, edgesRef.current);
+  }, [takeSnapshot]);
+
   // Persist node position after drag
   const onNodeDragStop: NodeMouseHandler = useCallback((_event, node) => {
-    takeSnapshot(nodesRef.current, edgesRef.current);
     api.updateComponent(node.id, {
       positionX: node.position.x,
       positionY: node.position.y,
     }).catch((err) => console.error('Failed to persist position:', err));
-  }, [takeSnapshot]);
+  }, []);
 
   // Delete selected element
   const handleDeleteSelected = useCallback(async () => {
@@ -788,6 +798,7 @@ export function DfdCanvas() {
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onPaneClick={handlePaneClick}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onDrop={onDrop}
           onDragOver={onDragOver}
@@ -796,6 +807,7 @@ export function DfdCanvas() {
           defaultEdgeOptions={{ type: 'bendable' }}
           fitView
           snapToGrid={false}
+          selectNodesOnDrag={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls style={{ backgroundColor: '#2d2d2d', borderColor: '#444', borderRadius: '8px' }} />
@@ -878,9 +890,10 @@ export function DfdCanvas() {
         {/* Node action bar */}
         {actionNode && (
           <div
-            className={styles.nodeActionBar}
+            className={styles.nodeActionBarWrapper}
             style={{ top: actionNode.y, left: actionNode.x }}
           >
+            <div className={styles.nodeActionBar}>
             <Button
               size="small"
               appearance="subtle"
@@ -905,6 +918,7 @@ export function DfdCanvas() {
             >
               Add Threat
             </Button>
+            </div>
           </div>
         )}
 
