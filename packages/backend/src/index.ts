@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import prisma from './prisma/client.js';
 import { threatModelRouter } from './routes/threatModels.js';
 import { threatRouter } from './routes/threats.js';
 import { commentRouter } from './routes/comments.js';
@@ -24,6 +25,21 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err);
 });
+
+// Wait for database to be ready before starting
+async function waitForDb(retries = 10, delay = 2000): Promise<void> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await prisma.$connect();
+      console.log('✅ Database connected');
+      return;
+    } catch {
+      console.log(`⏳ Waiting for database... (attempt ${i + 1}/${retries})`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('Could not connect to database after ' + retries + ' attempts');
+}
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -51,6 +67,11 @@ app.use('/api/tm7', requireAuth, tm7Router);
 // Error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`🛡️  Superior TMT backend running on http://localhost:${PORT}`);
+waitForDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🛡️  Superior TMT backend running on http://localhost:${PORT}`);
+  });
+}).catch((err) => {
+  console.error('❌ Failed to start:', err.message);
+  process.exit(1);
 });
