@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react';
-import { NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react';
+import { useReactFlow, type NodeProps } from '@xyflow/react';
 import { tokens, Text } from '@fluentui/react-components';
+
+type DragTarget = 'source' | 'target' | 'handle';
 
 export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
   const { setNodes } = useReactFlow();
-  const [dragging, setDragging] = useState(false);
+  const [dragTarget, setDragTarget] = useState<DragTarget | null>(null);
   const meta = (data as any).metadata || {};
   const lc = meta.lineCoords || {};
 
@@ -33,53 +35,67 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
   const rhx = hx - posX + offsetX;
   const rhy = hy - posY;
 
-  // Label position at the midpoint of the curve
   const labelX = rhx;
   const labelY = rhy;
 
   const color = tokens.colorPaletteRedBorder1;
 
-  // Draggable bend handle
-  const onHandleMouseDown = useCallback(
-    (event: React.MouseEvent) => {
+  const startDrag = useCallback(
+    (target: DragTarget, event: React.MouseEvent) => {
       event.stopPropagation();
       event.preventDefault();
-      setDragging(true);
+      setDragTarget(target);
 
       const startClientX = event.clientX;
       const startClientY = event.clientY;
-      const startHx = hx;
-      const startHy = hy;
+      const startVals = { sx, sy, tx, ty, hx, hy };
 
       const onMouseMove = (e: MouseEvent) => {
         const dx = e.clientX - startClientX;
         const dy = e.clientY - startClientY;
-        const newHx = startHx + dx;
-        const newHy = startHy + dy;
         setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id
-              ? {
-                  ...n,
-                  data: {
-                    ...n.data,
-                    metadata: {
-                      ...(n.data as any).metadata,
-                      lineCoords: {
-                        ...(n.data as any).metadata?.lineCoords,
-                        handleX: newHx,
-                        handleY: newHy,
-                      },
-                    },
-                  },
-                }
-              : n,
-          ),
+          nds.map((n) => {
+            if (n.id !== id) return n;
+            const curLc = (n.data as any).metadata?.lineCoords || {};
+            const updated = { ...curLc };
+            if (target === 'source') {
+              updated.sourceX = startVals.sx + dx;
+              updated.sourceY = startVals.sy + dy;
+            } else if (target === 'target') {
+              updated.targetX = startVals.tx + dx;
+              updated.targetY = startVals.ty + dy;
+            } else {
+              updated.handleX = startVals.hx + dx;
+              updated.handleY = startVals.hy + dy;
+            }
+            // Recompute node position and size from new coords
+            const nsx = updated.sourceX || 0, nsy = updated.sourceY || 0;
+            const ntx = updated.targetX || 0, nty = updated.targetY || 0;
+            const nhx = updated.handleX ?? (nsx + ntx) / 2;
+            const newPosX = nhx || Math.min(nsx, ntx);
+            const newPosY = Math.min(nsy, nty);
+            const nAllX = [nsx - newPosX, ntx - newPosX, nhx - newPosX, 0];
+            const nMinRx = Math.min(...nAllX);
+            const nMaxRx = Math.max(...nAllX);
+            return {
+              ...n,
+              position: { x: newPosX, y: newPosY },
+              style: {
+                ...(n.style || {}),
+                width: Math.max(nMaxRx - nMinRx + 40, 40),
+                height: Math.abs(nty - nsy) || 400,
+              },
+              data: {
+                ...n.data,
+                metadata: { ...(n.data as any).metadata, lineCoords: updated },
+              },
+            };
+          }),
         );
       };
 
       const onMouseUp = () => {
-        setDragging(false);
+        setDragTarget(null);
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
@@ -87,45 +103,48 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [id, hx, hy, setNodes],
+    [id, sx, sy, tx, ty, hx, hy, setNodes],
   );
 
-  // Double-click to reset handle to midpoint
+  // Double-click bend handle to reset to midpoint
   const onHandleDoubleClick = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
-      const midX = (sx + tx) / 2;
-      const midY = (sy + ty) / 2;
       setNodes((nds) =>
-        nds.map((n) =>
-          n.id === id
-            ? {
-                ...n,
-                data: {
-                  ...n.data,
-                  metadata: {
-                    ...(n.data as any).metadata,
-                    lineCoords: {
-                      ...(n.data as any).metadata?.lineCoords,
-                      handleX: midX,
-                      handleY: midY,
-                    },
-                  },
-                },
-              }
-            : n,
-        ),
+        nds.map((n) => {
+          if (n.id !== id) return n;
+          const curLc = (n.data as any).metadata?.lineCoords || {};
+          const midX = ((curLc.sourceX || 0) + (curLc.targetX || 0)) / 2;
+          const midY = ((curLc.sourceY || 0) + (curLc.targetY || 0)) / 2;
+          const updated = { ...curLc, handleX: midX, handleY: midY };
+          const nsx = updated.sourceX || 0, nsy = updated.sourceY || 0;
+          const ntx = updated.targetX || 0, nty = updated.targetY || 0;
+          const newPosX = midX || Math.min(nsx, ntx);
+          const newPosY = Math.min(nsy, nty);
+          const nAllX = [nsx - newPosX, ntx - newPosX, midX - newPosX, 0];
+          const nMinRx = Math.min(...nAllX);
+          const nMaxRx = Math.max(...nAllX);
+          return {
+            ...n,
+            position: { x: newPosX, y: newPosY },
+            style: {
+              ...(n.style || {}),
+              width: Math.max(nMaxRx - nMinRx + 40, 40),
+              height: Math.abs(nty - nsy) || 400,
+            },
+            data: { ...n.data, metadata: { ...(n.data as any).metadata, lineCoords: updated } },
+          };
+        }),
       );
     },
-    [id, sx, sy, tx, ty, setNodes],
+    [id, setNodes],
   );
 
-  const handleSize = 8;
+  const ptSize = 6;
+  const bendSize = 8;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <NodeResizer isVisible={selected} minWidth={20} minHeight={60}
-        handleStyle={{ backgroundColor: color, width: 7, height: 7 }} />
       <svg width="100%" height="100%" style={{ overflow: 'visible', position: 'absolute', top: 0, left: 0 }}>
         <path
           d={`M ${rsx} ${rsy} Q ${rhx} ${rhy} ${rtx} ${rty}`}
@@ -134,19 +153,35 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
           strokeWidth={3}
           strokeDasharray="8 5"
         />
-        {/* Draggable bend handle — visible when selected */}
+        {/* Endpoint and bend handles — visible when selected */}
         {selected && (
-          <circle
-            cx={rhx}
-            cy={rhy}
-            r={handleSize}
-            fill={dragging ? '#ff6b6b' : '#4a9eff'}
-            stroke="#fff"
-            strokeWidth={2}
-            style={{ cursor: 'grab', pointerEvents: 'all' }}
-            onMouseDown={onHandleMouseDown}
-            onDoubleClick={onHandleDoubleClick}
-          />
+          <>
+            {/* Source endpoint */}
+            <circle
+              cx={rsx} cy={rsy} r={ptSize}
+              fill={dragTarget === 'source' ? '#ff6b6b' : color}
+              stroke="#fff" strokeWidth={2}
+              style={{ cursor: 'grab', pointerEvents: 'all' }}
+              onMouseDown={(e) => startDrag('source', e)}
+            />
+            {/* Target endpoint */}
+            <circle
+              cx={rtx} cy={rty} r={ptSize}
+              fill={dragTarget === 'target' ? '#ff6b6b' : color}
+              stroke="#fff" strokeWidth={2}
+              style={{ cursor: 'grab', pointerEvents: 'all' }}
+              onMouseDown={(e) => startDrag('target', e)}
+            />
+            {/* Bend control point */}
+            <circle
+              cx={rhx} cy={rhy} r={bendSize}
+              fill={dragTarget === 'handle' ? '#ff6b6b' : '#4a9eff'}
+              stroke="#fff" strokeWidth={2}
+              style={{ cursor: 'grab', pointerEvents: 'all' }}
+              onMouseDown={(e) => startDrag('handle', e)}
+              onDoubleClick={onHandleDoubleClick}
+            />
+          </>
         )}
       </svg>
       <div style={{
@@ -157,6 +192,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
         transformOrigin: 'left top',
         whiteSpace: 'nowrap',
         color: tokens.colorPaletteRedForeground1,
+        pointerEvents: 'none',
       }}>
         <Text size={200} weight="semibold">
           {(data as any).label}
