@@ -445,19 +445,17 @@ threatModelRouter.post('/:id/generate-threats', asyncHandler(async (req, res) =>
   const allComponents = targetDiagrams.flatMap((d) => d.components);
   const allFlows = targetDiagrams.flatMap((d) => d.dataFlows);
 
-  const response = await client.chat.completions.create({
-    model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert security threat modeler. Analyze the Data Flow Diagram and generate STRIDE threats.
+  const buildMessages = (includeFewShot: boolean) => [
+    {
+      role: 'system' as const,
+      content: `You are a professional security architect performing a risk assessment using the STRIDE methodology on a software system's Data Flow Diagram (DFD). Your goal is to identify potential security risks and recommend mitigations.
 
 Output ONLY valid JSON matching this schema:
 {
   "threats": [
     {
-      "title": "Short threat title",
-      "description": "Detailed description including attack vector, impact, and suggested mitigation",
+      "title": "Short risk title",
+      "description": "Detailed description of the security risk, its potential impact, and recommended mitigation controls",
       "strideCategory": "SPOOFING | TAMPERING | REPUDIATION | INFO_DISCLOSURE | DENIAL_OF_SERVICE | ELEVATION_OF_PRIVILEGE",
       "severity": "CRITICAL | HIGH | MEDIUM | LOW | INFO",
       "confidence": 0.85,
@@ -467,33 +465,57 @@ Output ONLY valid JSON matching this schema:
   ]
 }
 
-Rules:
-- Generate threats for EACH component and data flow in the DFD
-- Focus on data flows that cross trust boundaries (higher severity)
-- Consider: authentication, authorization, input validation, encryption, logging, error handling
-- Be specific — reference actual components and flows by name
+Guidelines:
+- Identify security risks for each component and data flow in the DFD
+- Prioritize data flows crossing trust boundaries (typically higher severity)
+- Evaluate: authentication controls, authorization policies, input validation, data protection, audit logging, error handling
+- Reference actual component and flow names for specificity
 - Use the exact component/flow IDs provided in the DFD for linkedComponentId/linkedDataFlowId
-- A threat should link to EITHER a component OR a data flow, not both
-- Assign realistic severity based on potential impact and likelihood
-- Confidence score (0-1) reflects how certain you are the threat applies
-- Include at least one threat per STRIDE category if applicable
-- Include suggested mitigations in the description${fewShotSection}`,
-      },
-      {
-        role: 'user',
-        content: `Generate STRIDE threats for this system: "${model.name}"
+- A risk should link to EITHER a component OR a data flow, not both
+- Assign severity based on potential business impact and likelihood
+- Confidence score (0-1) reflects assessment certainty
+- Cover all applicable STRIDE categories
+- Include recommended security controls in the description${includeFewShot ? fewShotSection : ''}`,
+    },
+    {
+      role: 'user' as const,
+      content: `Perform a STRIDE security risk assessment for the system: "${model.name}"
 
-${model.description ? `Description: ${model.description}\n` : ''}
-DFD:
+${model.description ? `System description: ${model.description}\n` : ''}
+Data Flow Diagram:
 ${JSON.stringify(dfdDescription, null, 2)}`,
-      },
-    ],
-    temperature: 0.3,
-    max_tokens: 8000,
-    response_format: { type: 'json_object' },
-  });
+    },
+  ];
 
-  const content = response.choices[0]?.message?.content;
+  let content: string | null = null;
+
+  // Try with few-shot examples first; retry without if content filter triggers
+  for (const includeFewShot of [true, false]) {
+    try {
+      const response = await client.chat.completions.create({
+        model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+        messages: buildMessages(includeFewShot),
+        temperature: 0.3,
+        max_tokens: 8000,
+        response_format: { type: 'json_object' },
+      });
+      content = response.choices[0]?.message?.content;
+      break;
+    } catch (err: any) {
+      const status = err?.status || err?.response?.status;
+      const isContentFilter = status === 400 && (
+        err?.message?.includes('content management policy') ||
+        err?.message?.includes('content_filter') ||
+        JSON.stringify(err).includes('content_filter')
+      );
+      if (isContentFilter && includeFewShot) {
+        console.warn('Content filter triggered with reference examples, retrying without them...');
+        continue;
+      }
+      throw err;
+    }
+  }
+
   if (!content) {
     res.status(500).json({ error: 'AI returned empty response' });
     return;
