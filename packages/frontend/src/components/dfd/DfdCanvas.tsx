@@ -51,6 +51,7 @@ import {
   ArrowRedo20Regular,
   Save20Regular,
   Checkmark20Regular,
+  Delete16Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -337,6 +338,8 @@ export function DfdCanvas() {
   const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showDiagramPanel, setShowDiagramPanel] = useState(false);
+  const [deleteDiagramDialogOpen, setDeleteDiagramDialogOpen] = useState(false);
 
   // Save all node positions to DB
   const handleSaveAll = useCallback(async () => {
@@ -433,6 +436,9 @@ export function DfdCanvas() {
   const handleTabSelect = (_event: unknown, data: { value: unknown }) => {
     const diagramId = data.value as string;
     selectDiagram(diagramId, diagrams, commentCounts);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+    setShowDiagramPanel(true);
   };
 
   const handleCreateDiagram = async () => {
@@ -450,6 +456,36 @@ export function DfdCanvas() {
     setNewDiagramDialogOpen(false);
     setNewDiagramName('');
   };
+
+  const handleRenameDiagram = useCallback(async (newName: string) => {
+    if (!selectedDiagramId || !newName.trim()) return;
+    try {
+      await api.updateDiagram(selectedDiagramId, { name: newName });
+      setDiagrams((prev) => prev.map((d) => d.id === selectedDiagramId ? { ...d, name: newName } : d));
+    } catch (err) {
+      console.error('Failed to rename diagram:', err);
+    }
+  }, [selectedDiagramId]);
+
+  const handleDeleteDiagram = useCallback(async () => {
+    if (!selectedDiagramId) return;
+    try {
+      await api.deleteDiagram(selectedDiagramId);
+      const remaining = diagrams.filter((d) => d.id !== selectedDiagramId);
+      setDiagrams(remaining);
+      setDeleteDiagramDialogOpen(false);
+      setShowDiagramPanel(false);
+      if (remaining.length > 0) {
+        selectDiagram(remaining[0].id, remaining, commentCounts);
+      } else {
+        setSelectedDiagramId(null);
+        setNodes([]);
+        setEdges([]);
+      }
+    } catch (err) {
+      console.error('Failed to delete diagram:', err);
+    }
+  }, [selectedDiagramId, diagrams, commentCounts, selectDiagram, setNodes, setEdges]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -486,6 +522,7 @@ export function DfdCanvas() {
     setCommentPanelNode(null);
     setSelectedNode(node);
     setSelectedEdge(null);
+    setShowDiagramPanel(false);
   }, []);
 
   const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
@@ -493,6 +530,7 @@ export function DfdCanvas() {
     setSelectedNode(null);
     setActionNode(null);
     setCommentPanelNode(null);
+    setShowDiagramPanel(false);
   }, []);
 
   const openCommentPanel = useCallback(async (nodeId: string, label: string, x: number, y: number) => {
@@ -536,6 +574,7 @@ export function DfdCanvas() {
     setCommentPanelNode(null);
     setSelectedNode(null);
     setSelectedEdge(null);
+    setShowDiagramPanel(false);
   }, []);
 
   // Drag-and-drop from palette
@@ -951,7 +990,7 @@ export function DfdCanvas() {
               </Text>
             )}
           </Panel>
-          <Panel position="top-right" style={{ top: '10px', right: (selectedNode || selectedEdge) ? '310px' : '10px', transition: 'right 0.2s ease' }}>
+          <Panel position="top-right" style={{ top: '10px', right: (selectedNode || selectedEdge || showDiagramPanel) ? '310px' : '10px', transition: 'right 0.2s ease' }}>
             <ComponentPalette />
           </Panel>
         </ReactFlow>
@@ -1070,6 +1109,76 @@ export function DfdCanvas() {
             onEdgeDeleted={handleEdgeDeleted}
           />
         )}
+
+        {/* Diagram properties panel */}
+        {showDiagramPanel && !selectedNode && !selectedEdge && selectedDiagramId && (() => {
+          const currentDiagram = diagrams.find((d) => d.id === selectedDiagramId);
+          if (!currentDiagram) return null;
+          return (
+            <div style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: '300px', zIndex: 10,
+              backgroundColor: 'var(--colorNeutralBackground1)', borderLeft: '1px solid var(--colorNeutralStroke1)',
+              boxShadow: 'var(--shadow16)', display: 'flex', flexDirection: 'column',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
+                <Text weight="semibold">Diagram Properties</Text>
+                <Button appearance="subtle" size="small" icon={<Dismiss16Regular />} onClick={() => setShowDiagramPanel(false)} />
+              </div>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <Text size={200} weight="semibold">Name</Text>
+                  <Input
+                    value={currentDiagram.name}
+                    onChange={(_e, d) => {
+                      setDiagrams((prev) => prev.map((dia) => dia.id === selectedDiagramId ? { ...dia, name: d.value } : dia));
+                    }}
+                    onBlur={(e) => handleRenameDiagram(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <Text size={200} weight="semibold">Components</Text>
+                  <Text size={200}>{nodes.filter((n) => n.type !== 'textAnnotation').length} components</Text>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <Text size={200} weight="semibold">Data Flows</Text>
+                  <Text size={200}>{edges.length} flows</Text>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid var(--colorNeutralStroke2)' }}>
+                <div style={{ flex: 1 }} />
+                <Dialog open={deleteDiagramDialogOpen} onOpenChange={(_e, data) => setDeleteDiagramDialogOpen(data.open)}>
+                  <DialogTrigger>
+                    <Button
+                      appearance="subtle"
+                      icon={<Delete16Regular />}
+                      style={{ color: tokens.colorPaletteRedForeground1 }}
+                      disabled={diagrams.length <= 1}
+                      title={diagrams.length <= 1 ? 'Cannot delete the last diagram' : 'Delete this diagram'}
+                    >
+                      Delete Diagram
+                    </Button>
+                  </DialogTrigger>
+                  <DialogSurface>
+                    <DialogBody>
+                      <DialogTitle>Delete Diagram</DialogTitle>
+                      <DialogContent>
+                        Are you sure you want to delete "{currentDiagram.name}"? All components and data flows in this diagram will be permanently removed.
+                      </DialogContent>
+                      <DialogActions>
+                        <DialogTrigger>
+                          <Button appearance="secondary">Cancel</Button>
+                        </DialogTrigger>
+                        <Button appearance="primary" style={{ backgroundColor: tokens.colorPaletteRedBackground3 }} onClick={handleDeleteDiagram}>
+                          Delete
+                        </Button>
+                      </DialogActions>
+                    </DialogBody>
+                  </DialogSurface>
+                </Dialog>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Keyboard delete confirmation */}
         <Dialog

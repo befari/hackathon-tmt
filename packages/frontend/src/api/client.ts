@@ -76,6 +76,10 @@ export const api = {
   listDiagrams: (modelId: string) => request<any>(`/threat-models/${modelId}/diagrams`),
   createDiagram: (modelId: string, data: { name: string; description?: string }) =>
     request<any>(`/threat-models/${modelId}/diagrams`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteDiagram: (diagramId: string) =>
+    request<any>(`/threat-models/diagrams/${diagramId}`, { method: 'DELETE' }),
+  updateDiagram: (diagramId: string, data: Record<string, any>) =>
+    request<any>(`/threat-models/diagrams/${diagramId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Components (scoped to diagram)
   addComponent: (modelId: string, diagramId: string, data: Record<string, any>) =>
