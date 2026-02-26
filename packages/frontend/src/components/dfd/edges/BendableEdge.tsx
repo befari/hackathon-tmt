@@ -123,6 +123,7 @@ export function BendableEdge({
         id={id}
         path={edgePath}
         style={style}
+        interactionWidth={20}
         {...props}
       />
       {/* Label */}
@@ -143,6 +144,7 @@ export function BendableEdge({
               padding: '1px 4px',
               borderRadius: 3,
               whiteSpace: 'nowrap',
+              pointerEvents: 'none',
             }}
           >
             {label as string}
