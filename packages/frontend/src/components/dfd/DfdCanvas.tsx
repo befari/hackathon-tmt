@@ -59,6 +59,7 @@ import { ComponentPalette } from './ComponentPalette';
 import { PropertyPanel } from './PropertyPanel';
 import { AIRatingWidget } from './AIRatingWidget';
 import { ShareDialog } from '../sharing/ShareDialog';
+import { BendableEdge } from './edges/BendableEdge';
 import { api } from '../../api/client';
 import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
 
@@ -69,6 +70,10 @@ const nodeTypes = {
   trustBoundary: TrustBoundaryNode,
   trustBoundaryLine: TrustBoundaryLineNode,
   textAnnotation: TextAnnotationNode,
+};
+
+const edgeTypes = {
+  bendable: BendableEdge,
 };
 
 const useStyles = makeStyles({
@@ -254,6 +259,7 @@ function diagramToNodesAndEdges(
     const targetHandle = portToHandle(meta.portTarget, 'tgt');
     return {
       id: flow.id,
+      type: 'bendable',
       source: flow.sourceId,
       target: flow.targetId,
       ...(sourceHandle ? { sourceHandle } : {}),
@@ -293,6 +299,12 @@ export function DfdCanvas() {
   const [newDiagramName, setNewDiagramName] = useState('');
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
+
+  // Refs to always have latest state (avoids stale closures in callbacks)
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
 
   // Node action bar / comment panel state
   const [actionNode, setActionNode] = useState<{ nodeId: string; x: number; y: number } | null>(null);
@@ -502,7 +514,7 @@ export function DfdCanvas() {
         : componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       try {
-        takeSnapshot(nodes, edges);
+        takeSnapshot(nodesRef.current, edgesRef.current);
         const metadata = subtype ? { subtype } : undefined;
         const { data } = await api.addComponent(id, selectedDiagramId, {
           name: defaultName,
@@ -528,21 +540,21 @@ export function DfdCanvas() {
         console.error('Failed to add component:', err);
       }
     },
-    [id, selectedDiagramId, setNodes, nodes, edges, takeSnapshot]
+    [id, selectedDiagramId, setNodes, takeSnapshot]
   );
 
   // Persist node position after drag
   const onNodeDragStop: NodeMouseHandler = useCallback((_event, node) => {
-    takeSnapshot(nodes, edges);
+    takeSnapshot(nodesRef.current, edgesRef.current);
     api.updateComponent(node.id, {
       positionX: node.position.x,
       positionY: node.position.y,
     }).catch((err) => console.error('Failed to persist position:', err));
-  }, [nodes, edges, takeSnapshot]);
+  }, [takeSnapshot]);
 
   // Delete selected element
   const handleDeleteSelected = useCallback(async () => {
-    takeSnapshot(nodes, edges);
+    takeSnapshot(nodesRef.current, edgesRef.current);
     try {
       if (selectedNode) {
         await api.deleteComponent(selectedNode.id);
@@ -558,7 +570,7 @@ export function DfdCanvas() {
       console.error('Failed to delete:', err);
     }
     setDeleteDialogOpen(false);
-  }, [selectedNode, selectedEdge, setNodes, setEdges, nodes, edges, takeSnapshot]);
+  }, [selectedNode, selectedEdge, setNodes, setEdges, takeSnapshot]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
@@ -569,14 +581,14 @@ export function DfdCanvas() {
       }
       if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
         event.preventDefault();
-        undo(nodes, edges, setNodes, setEdges);
+        undo(nodesRef.current, edgesRef.current, setNodes, setEdges);
       }
       if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
         event.preventDefault();
-        redo(nodes, edges, setNodes, setEdges);
+        redo(nodesRef.current, edgesRef.current, setNodes, setEdges);
       }
     },
-    [selectedNode, selectedEdge, nodes, edges, setNodes, setEdges, undo, redo]
+    [selectedNode, selectedEdge, setNodes, setEdges, undo, redo]
   );
 
   const openThreatDialog = useCallback((componentId: string, componentName: string) => {
@@ -678,7 +690,7 @@ export function DfdCanvas() {
     async (connection: Connection) => {
       if (!id || !selectedDiagramId || !connection.source || !connection.target) return;
       try {
-        takeSnapshot(nodes, edges);
+        takeSnapshot(nodesRef.current, edgesRef.current);
         const { data } = await api.addDataFlow(id, selectedDiagramId, {
           label: 'New Flow',
           sourceId: connection.source,
@@ -701,7 +713,7 @@ export function DfdCanvas() {
         console.error('Failed to create data flow:', err);
       }
     },
-    [id, selectedDiagramId, setEdges, nodes, edges, takeSnapshot]
+    [id, selectedDiagramId, setEdges, takeSnapshot]
   );
 
   if (loading) {
@@ -780,6 +792,8 @@ export function DfdCanvas() {
           onDrop={onDrop}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{ type: 'bendable' }}
           fitView
           snapToGrid={false}
         >
@@ -791,8 +805,8 @@ export function DfdCanvas() {
                 appearance="subtle"
                 icon={<ArrowUndo20Regular />}
                 size="small"
-                disabled={!canUndo()}
-                onClick={() => undo(nodes, edges, setNodes, setEdges)}
+                disabled={!canUndo}
+                onClick={() => undo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
                 title="Undo (Ctrl+Z)"
                 style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
               />
@@ -800,8 +814,8 @@ export function DfdCanvas() {
                 appearance="subtle"
                 icon={<ArrowRedo20Regular />}
                 size="small"
-                disabled={!canRedo()}
-                onClick={() => redo(nodes, edges, setNodes, setEdges)}
+                disabled={!canRedo}
+                onClick={() => redo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
                 title="Redo (Ctrl+Y)"
                 style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
               />
