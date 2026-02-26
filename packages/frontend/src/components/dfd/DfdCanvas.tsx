@@ -49,6 +49,8 @@ import {
   ShieldTask20Regular,
   ArrowUndo20Regular,
   ArrowRedo20Regular,
+  Save20Regular,
+  Checkmark20Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -334,6 +336,24 @@ export function DfdCanvas() {
   const [threatComponentName, setThreatComponentName] = useState('');
   const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Save all node positions to DB
+  const handleSaveAll = useCallback(async () => {
+    setSaveStatus('saving');
+    try {
+      await Promise.all(
+        nodesRef.current
+          .filter((n) => n.type !== 'textAnnotation')
+          .map((n) => api.updateComponent(n.id, { positionX: n.position.x, positionY: n.position.y }))
+      );
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveStatus('idle');
+    }
+  }, []);
 
   const loadCommentCounts = useCallback(async () => {
     if (!id) return;
@@ -615,7 +635,11 @@ export function DfdCanvas() {
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if ((event.key === 'Delete' || event.key === 'Backspace') && (selectedNode || selectedEdge)) {
+      // Don't intercept keys when user is typing in an input/textarea
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (event.target as HTMLElement)?.isContentEditable) return;
+
+      if (event.key === 'Delete' && (selectedNode || selectedEdge)) {
         event.preventDefault();
         setDeleteDialogOpen(true);
       }
@@ -627,8 +651,12 @@ export function DfdCanvas() {
         event.preventDefault();
         redo(nodesRef.current, edgesRef.current, setNodes, setEdges);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        handleSaveAll();
+      }
     },
-    [selectedNode, selectedEdge, setNodes, setEdges, undo, redo]
+    [selectedNode, selectedEdge, setNodes, setEdges, undo, redo, handleSaveAll]
   );
 
   const openThreatDialog = useCallback((componentId: string, componentName: string) => {
@@ -861,6 +889,16 @@ export function DfdCanvas() {
                 onClick={() => redo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
                 title="Redo (Ctrl+Y)"
                 style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
+              />
+              <div style={{ width: '1px', height: '20px', backgroundColor: '#555' }} />
+              <Button
+                appearance="subtle"
+                icon={saveStatus === 'saved' ? <Checkmark20Regular /> : <Save20Regular />}
+                size="small"
+                disabled={saveStatus === 'saving'}
+                onClick={handleSaveAll}
+                title="Save All (Ctrl+S)"
+                style={{ backgroundColor: '#2d2d2d', color: saveStatus === 'saved' ? '#4caf50' : '#ccc', minWidth: 'auto' }}
               />
             </div>
           </Panel>

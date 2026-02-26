@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   makeStyles,
@@ -20,7 +20,7 @@ import {
   DialogActions,
   DialogContent,
 } from '@fluentui/react-components';
-import { Delete20Regular, Save20Regular, Dismiss16Regular, ShieldTask20Regular, Add16Regular, ArrowRight16Regular } from '@fluentui/react-icons';
+import { Delete20Regular, Dismiss16Regular, ShieldTask20Regular, Add16Regular, ArrowRight16Regular } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Node, Edge } from '@xyflow/react';
 
@@ -112,9 +112,10 @@ export function PropertyPanel({
   const [dataClassification, setDataClassification] = useState('');
   const [crossesTrustBoundary, setCrossesTrustBoundary] = useState(false);
 
-  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linkedThreats, setLinkedThreats] = useState<any[]>([]);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Add threat dialog state
   const [addThreatOpen, setAddThreatOpen] = useState(false);
@@ -143,6 +144,7 @@ export function PropertyPanel({
       setType(d.componentType || 'PROCESS');
       setDescription(d.description || '');
       setSourceFiles((d.sourceFiles || []).join(', '));
+      setSaved(false);
     }
   }, [selectedNode]);
 
@@ -153,46 +155,77 @@ export function PropertyPanel({
       setProtocol(d.protocol || '');
       setDataClassification(d.dataClassification || '');
       setCrossesTrustBoundary(selectedEdge.animated || false);
+      setSaved(false);
     }
   }, [selectedEdge]);
 
-  const handleSaveNode = useCallback(async () => {
-    if (!selectedNode) return;
-    setSaving(true);
-    try {
-      const payload = {
-        name,
-        type,
-        description,
-        sourceFiles: sourceFiles.split(',').map((s) => s.trim()).filter(Boolean),
-      };
-      await api.updateComponent(selectedNode.id, payload);
-      onNodeUpdated(selectedNode.id, payload);
-    } catch (err) {
-      console.error('Failed to update component:', err);
-    } finally {
-      setSaving(false);
-    }
-  }, [selectedNode, name, type, description, sourceFiles, onNodeUpdated]);
+  // Auto-save node properties with debounce
+  const saveNodeRef = useRef({ name, type, description, sourceFiles });
+  saveNodeRef.current = { name, type, description, sourceFiles };
 
-  const handleSaveEdge = useCallback(async () => {
-    if (!selectedEdge) return;
-    setSaving(true);
-    try {
+  useEffect(() => {
+    if (!selectedNode) return;
+    // Skip the initial population
+    const d = selectedNode.data as Record<string, any>;
+    const initialName = d.label || '';
+    const initialDesc = d.description || '';
+    const initialFiles = (d.sourceFiles || []).join(', ');
+    if (name === initialName && description === initialDesc && sourceFiles === initialFiles) return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      const cur = saveNodeRef.current;
       const payload = {
-        label,
-        protocol,
-        dataClassification,
-        crossesTrustBoundary,
+        name: cur.name,
+        type: cur.type,
+        description: cur.description,
+        sourceFiles: cur.sourceFiles.split(',').map((s) => s.trim()).filter(Boolean),
       };
-      await api.updateDataFlow(selectedEdge.id, payload);
-      onEdgeUpdated(selectedEdge.id, payload);
-    } catch (err) {
-      console.error('Failed to update data flow:', err);
-    } finally {
-      setSaving(false);
-    }
-  }, [selectedEdge, label, protocol, dataClassification, crossesTrustBoundary, onEdgeUpdated]);
+      try {
+        await api.updateComponent(selectedNode.id, payload);
+        onNodeUpdated(selectedNode.id, payload);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      }
+    }, 800);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [name, description, sourceFiles, selectedNode, onNodeUpdated]);
+
+  // Auto-save edge properties with debounce
+  const saveEdgeRef = useRef({ label, protocol, dataClassification, crossesTrustBoundary });
+  saveEdgeRef.current = { label, protocol, dataClassification, crossesTrustBoundary };
+
+  useEffect(() => {
+    if (!selectedEdge) return;
+    const initialLabel = (selectedEdge.label as string) || '';
+    const d = (selectedEdge.data || {}) as Record<string, any>;
+    const initialProto = d.protocol || '';
+    const initialClass = d.dataClassification || '';
+    const initialBoundary = selectedEdge.animated || false;
+    if (label === initialLabel && protocol === initialProto && dataClassification === initialClass && crossesTrustBoundary === initialBoundary) return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      const cur = saveEdgeRef.current;
+      const payload = {
+        label: cur.label,
+        protocol: cur.protocol,
+        dataClassification: cur.dataClassification,
+        crossesTrustBoundary: cur.crossesTrustBoundary,
+      };
+      try {
+        await api.updateDataFlow(selectedEdge.id, payload);
+        onEdgeUpdated(selectedEdge.id, payload);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      }
+    }, 800);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [label, protocol, dataClassification, crossesTrustBoundary, selectedEdge, onEdgeUpdated]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -360,15 +393,12 @@ export function PropertyPanel({
       </div>
 
       <div className={styles.actions}>
-        <Button
-          appearance="primary"
-          icon={<Save20Regular />}
-          onClick={isNode ? handleSaveNode : handleSaveEdge}
-          disabled={saving}
-          style={{ flex: 1 }}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
+        {saved && (
+          <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1, alignSelf: 'center', flex: 1 }}>
+            ✓ Saved
+          </Text>
+        )}
+        {!saved && <div style={{ flex: 1 }} />}
         <Dialog
           open={deleteDialogOpen}
           onOpenChange={(_e, data) => setDeleteDialogOpen(data.open)}
