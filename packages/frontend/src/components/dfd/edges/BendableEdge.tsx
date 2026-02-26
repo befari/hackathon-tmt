@@ -5,6 +5,7 @@ import {
   type EdgeProps,
   useReactFlow,
 } from '@xyflow/react';
+import { useTakeSnapshot } from '../UndoRedoContext';
 
 /**
  * Custom edge with a draggable bend point.
@@ -23,6 +24,7 @@ export function BendableEdge({
   ...props
 }: EdgeProps) {
   const { setEdges } = useReactFlow();
+  const takeSnapshot = useTakeSnapshot();
   const [dragging, setDragging] = useState(false);
 
   // Get bend offset from edge data, default to midpoint (0,0 offset)
@@ -58,6 +60,7 @@ export function BendableEdge({
     (event: React.MouseEvent) => {
       event.stopPropagation();
       event.preventDefault();
+      takeSnapshot();
       setDragging(true);
 
       const startX = event.clientX;
@@ -93,13 +96,14 @@ export function BendableEdge({
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [id, bendOffsetX, bendOffsetY, setEdges],
+    [id, bendOffsetX, bendOffsetY, setEdges, takeSnapshot],
   );
 
   // Double-click to reset bend
   const onDoubleClick = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
+      takeSnapshot();
       setEdges((eds) =>
         eds.map((edge) =>
           edge.id === id
@@ -108,7 +112,7 @@ export function BendableEdge({
         ),
       );
     },
-    [id, setEdges],
+    [id, setEdges, takeSnapshot],
   );
 
   const handleSize = 8;

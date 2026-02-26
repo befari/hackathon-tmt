@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useReactFlow, type NodeProps } from '@xyflow/react';
 import { tokens, Text } from '@fluentui/react-components';
+import { useTakeSnapshot } from '../UndoRedoContext';
 
 type DragTarget = 'source' | 'target' | 'handle';
 
 export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
   const { setNodes } = useReactFlow();
+  const takeSnapshot = useTakeSnapshot();
   const [dragTarget, setDragTarget] = useState<DragTarget | null>(null);
   const meta = (data as any).metadata || {};
   const lc = meta.lineCoords || {};
@@ -44,6 +46,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
     (target: DragTarget, event: React.MouseEvent) => {
       event.stopPropagation();
       event.preventDefault();
+      takeSnapshot();
       setDragTarget(target);
 
       const startClientX = event.clientX;
@@ -103,13 +106,14 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [id, sx, sy, tx, ty, hx, hy, setNodes],
+    [id, sx, sy, tx, ty, hx, hy, setNodes, takeSnapshot],
   );
 
   // Double-click bend handle to reset to midpoint
   const onHandleDoubleClick = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
+      takeSnapshot();
       setNodes((nds) =>
         nds.map((n) => {
           if (n.id !== id) return n;
@@ -137,7 +141,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
         }),
       );
     },
-    [id, setNodes],
+    [id, setNodes, takeSnapshot],
   );
 
   const ptSize = 6;

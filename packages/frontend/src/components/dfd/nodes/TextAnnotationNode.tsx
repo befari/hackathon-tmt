@@ -1,5 +1,6 @@
 import { NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
+import { useTakeSnapshot } from '../UndoRedoContext';
 
 const useStyles = makeStyles({
   node: {
@@ -18,10 +19,12 @@ const useStyles = makeStyles({
 
 export function TextAnnotationNode({ data, selected }: NodeProps) {
   const styles = useStyles();
+  const takeSnapshot = useTakeSnapshot();
 
   return (
     <>
       <NodeResizer isVisible={selected} minWidth={100} minHeight={30}
+        onResizeStart={takeSnapshot}
         handleStyle={{ backgroundColor: tokens.colorNeutralStroke2, width: 6, height: 6 }} />
       <div className={styles.node}>
         <Text size={200}>

@@ -18,6 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import './dfd-dark.css';
 import { useUndoRedo } from './useUndoRedo';
+import { UndoRedoContext } from './UndoRedoContext';
 import {
   makeStyles,
   tokens,
@@ -311,6 +312,11 @@ export function DfdCanvas() {
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+
+  // Stable snapshot function for child components via context
+  const takeSnapshotNow = useCallback(() => {
+    takeSnapshot(nodesRef.current, edgesRef.current);
+  }, [takeSnapshot]);
 
   // Node action bar / comment panel state
   const [actionNode, setActionNode] = useState<{ nodeId: string; x: number; y: number } | null>(null);
@@ -789,6 +795,7 @@ export function DfdCanvas() {
         </Dialog>
       </div>
       <div className={styles.container} ref={reactFlowWrapper} onKeyDown={handleKeyDown} tabIndex={-1}>
+        <UndoRedoContext.Provider value={takeSnapshotNow}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -886,6 +893,7 @@ export function DfdCanvas() {
             <ComponentPalette />
           </Panel>
         </ReactFlow>
+        </UndoRedoContext.Provider>
 
         {/* Node action bar */}
         {actionNode && (

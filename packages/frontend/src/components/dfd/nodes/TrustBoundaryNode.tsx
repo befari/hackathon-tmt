@@ -1,5 +1,6 @@
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
+import { useTakeSnapshot } from '../UndoRedoContext';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -31,6 +32,7 @@ const useStyles = makeStyles({
 
 export function TrustBoundaryNode({ data, selected }: NodeProps) {
   const styles = useStyles();
+  const takeSnapshot = useTakeSnapshot();
   const commentCount = (data as any).commentCount || 0;
 
   return (
@@ -39,6 +41,7 @@ export function TrustBoundaryNode({ data, selected }: NodeProps) {
         isVisible={selected}
         minWidth={200}
         minHeight={100}
+        onResizeStart={takeSnapshot}
         lineStyle={{ borderColor: tokens.colorPaletteRedBorder1 }}
         handleStyle={{ backgroundColor: tokens.colorPaletteRedBorder1, width: 8, height: 8 }}
       />

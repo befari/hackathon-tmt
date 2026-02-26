@@ -1,5 +1,6 @@
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
+import { useTakeSnapshot } from '../UndoRedoContext';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -33,11 +34,13 @@ const useStyles = makeStyles({
 
 export function ProcessNode({ data, selected }: NodeProps) {
   const styles = useStyles();
+  const takeSnapshot = useTakeSnapshot();
   const commentCount = (data as any).commentCount || 0;
 
   return (
     <>
       <NodeResizer isVisible={selected} minWidth={60} minHeight={60}
+        onResizeStart={takeSnapshot}
         handleStyle={{ backgroundColor: tokens.colorBrandStroke1, width: 7, height: 7 }} />
       <Handle type="source" position={Position.Top} id="top-src" />
       <Handle type="target" position={Position.Top} id="top-tgt" />
