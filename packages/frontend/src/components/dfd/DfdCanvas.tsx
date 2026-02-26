@@ -197,7 +197,14 @@ function diagramToNodesAndEdges(
 
     // Apply stored width/height to all nodes that have metadata
     const nodeStyle: Record<string, any> = {};
-    if (meta.width && meta.height) {
+    if (isLineBoundary && meta.lineCoords) {
+      // Line boundaries: use line length as height, fixed small width for the dashed line
+      const lc = meta.lineCoords;
+      const dx = (lc.targetX || 0) - (lc.sourceX || 0);
+      const dy = (lc.targetY || 0) - (lc.sourceY || 0);
+      nodeStyle.width = 20;
+      nodeStyle.height = Math.sqrt(dx * dx + dy * dy) || 400;
+    } else if (meta.width && meta.height) {
       nodeStyle.width = meta.width;
       nodeStyle.height = meta.height;
     }
