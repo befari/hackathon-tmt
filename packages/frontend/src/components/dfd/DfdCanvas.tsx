@@ -291,7 +291,7 @@ function diagramToNodesAndEdges(
 export function DfdCanvas() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
@@ -386,7 +386,7 @@ export function DfdCanvas() {
     loadModel();
   }, [loadModel]);
 
-  // Auto-focus a component or edge from ?focus= query param
+  // Auto-focus a component or edge from ?focus= query param (once)
   useEffect(() => {
     const focusId = searchParams.get('focus');
     if (!focusId || loading) return;
@@ -396,17 +396,19 @@ export function DfdCanvas() {
     if (node) {
       setSelectedNode(node);
       setSelectedEdge(null);
-      const rect = { right: 100, top: 100 };
-      setActionNode({ nodeId: node.id, x: rect.right, y: rect.top });
-      return;
+      setActionNode({ nodeId: node.id, x: 100, y: 100 });
+    } else {
+      const edge = edges.find((e) => e.id === focusId);
+      if (edge) {
+        setSelectedEdge(edge);
+        setSelectedNode(null);
+        setActionNode(null);
+      }
     }
-    const edge = edges.find((e) => e.id === focusId);
-    if (edge) {
-      setSelectedEdge(edge);
-      setSelectedNode(null);
-      setActionNode(null);
-    }
-  }, [searchParams, loading, nodes, edges]);
+
+    // Clear focus param so it doesn't re-trigger on every state change
+    setSearchParams((prev) => { prev.delete('focus'); return prev; }, { replace: true });
+  }, [searchParams, loading, nodes.length, edges.length]);
 
   const handleTabSelect = (_event: unknown, data: { value: unknown }) => {
     const diagramId = data.value as string;
