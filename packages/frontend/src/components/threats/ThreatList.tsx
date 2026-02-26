@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -158,6 +158,9 @@ export function ThreatList() {
   const [editOpen, setEditOpen] = useState(false);
   const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const loadThreats = useCallback(() => {
     if (!id) return;
@@ -186,6 +189,22 @@ export function ThreatList() {
   useEffect(() => {
     loadThreats();
   }, [loadThreats]);
+
+  // Auto-scroll to highlighted threat and expand it
+  useEffect(() => {
+    if (highlightId && !loading && threats.length > 0) {
+      setExpandedThreat(highlightId);
+      // Scroll after render
+      requestAnimationFrame(() => {
+        highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      // Clear the highlight param after scrolling
+      const timeout = setTimeout(() => {
+        setSearchParams((prev) => { prev.delete('highlight'); return prev; }, { replace: true });
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightId, loading, threats]);
 
   const toggleComments = useCallback(async (threatId: string) => {
     if (expandedThreat === threatId) {
@@ -412,7 +431,12 @@ export function ThreatList() {
       ) : (
         <div className={styles.list}>
           {filteredThreats.map((threat) => (
-            <Card key={threat.id} className={styles.card}>
+            <Card
+              key={threat.id}
+              className={styles.card}
+              ref={threat.id === highlightId ? highlightRef : undefined}
+              style={threat.id === highlightId ? { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' } : undefined}
+            >
               <CardHeader
                 header={<Text weight="semibold">{threat.title}</Text>}
                 description={threat.description.substring(0, 200)}
@@ -458,7 +482,8 @@ export function ThreatList() {
                       icon={<Eye20Regular />}
                       onClick={() => {
                         const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
-                        navigate(`/model/${id}?diagram=${diagId}`);
+                        const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
+                        navigate(`/model/${id}?diagram=${diagId}${focusId ? `&focus=${focusId}` : ''}`);
                       }}
                     >
                       View in DFD

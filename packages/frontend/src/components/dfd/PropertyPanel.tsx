@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -19,7 +20,7 @@ import {
   DialogActions,
   DialogContent,
 } from '@fluentui/react-components';
-import { Delete20Regular, Save20Regular, Dismiss16Regular, ShieldTask20Regular } from '@fluentui/react-icons';
+import { Delete20Regular, Save20Regular, Dismiss16Regular, ShieldTask20Regular, Add16Regular, ArrowRight16Regular } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Node, Edge } from '@xyflow/react';
 
@@ -96,6 +97,8 @@ export function PropertyPanel({
   onEdgeDeleted,
 }: PropertyPanelProps) {
   const styles = useStyles();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
 
   // Node fields
   const [name, setName] = useState('');
@@ -113,16 +116,24 @@ export function PropertyPanel({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linkedThreats, setLinkedThreats] = useState<any[]>([]);
 
-  // Load linked threats when a node is selected
+  // Add threat dialog state
+  const [addThreatOpen, setAddThreatOpen] = useState(false);
+  const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
+
+  // Load linked threats when a node or edge is selected
   useEffect(() => {
     if (selectedNode && threatModelId) {
       api.listThreats({ threatModelId, componentId: selectedNode.id })
         .then(({ data }: any) => setLinkedThreats(data || []))
         .catch(() => setLinkedThreats([]));
+    } else if (selectedEdge && threatModelId) {
+      api.listThreats({ threatModelId, dataFlowId: selectedEdge.id })
+        .then(({ data }: any) => setLinkedThreats(data || []))
+        .catch(() => setLinkedThreats([]));
     } else {
       setLinkedThreats([]);
     }
-  }, [selectedNode, threatModelId]);
+  }, [selectedNode, selectedEdge, threatModelId]);
 
   // Populate fields when selection changes
   useEffect(() => {
@@ -198,6 +209,33 @@ export function PropertyPanel({
     setDeleteDialogOpen(false);
   }, [selectedNode, selectedEdge, onNodeDeleted, onEdgeDeleted]);
 
+  const handleAddThreat = useCallback(async () => {
+    if (!threatModelId) return;
+    const payload: Record<string, any> = {
+      ...newThreat,
+      threatModelId,
+    };
+    if (selectedNode) payload.componentId = selectedNode.id;
+    if (selectedEdge) payload.dataFlowId = selectedEdge.id;
+    try {
+      await api.createThreat(payload);
+      // Reload linked threats
+      const filter: Record<string, string> = { threatModelId };
+      if (selectedNode) filter.componentId = selectedNode.id;
+      if (selectedEdge) filter.dataFlowId = selectedEdge.id;
+      const { data } = await api.listThreats(filter) as any;
+      setLinkedThreats(data || []);
+      setAddThreatOpen(false);
+      setNewThreat({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
+    } catch (err) {
+      console.error('Failed to create threat:', err);
+    }
+  }, [threatModelId, selectedNode, selectedEdge, newThreat]);
+
+  const navigateToThreat = useCallback((threatId: string) => {
+    if (id) navigate(`/model/${id}/threats?highlight=${threatId}`);
+  }, [id, navigate]);
+
   const isNode = !!selectedNode;
   const isEdge = !!selectedEdge;
 
@@ -239,30 +277,6 @@ export function PropertyPanel({
                 placeholder="file1.ts, file2.ts"
               />
             </div>
-            {linkedThreats.length > 0 && (
-              <>
-                <Divider />
-                <div className={styles.field}>
-                  <Text size={200} weight="semibold">
-                    <ShieldTask20Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                    Linked Threats ({linkedThreats.length})
-                  </Text>
-                  {linkedThreats.map((t: any) => (
-                    <div key={t.id} className={styles.threatItem}>
-                      <Text size={200} weight="semibold" block>{t.title}</Text>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-                        <Badge size="small" color={
-                          t.severity === 'CRITICAL' ? 'danger' :
-                          t.severity === 'HIGH' ? 'important' :
-                          t.severity === 'MEDIUM' ? 'warning' : 'informative'
-                        }>{t.severity}</Badge>
-                        <Badge size="small" appearance="outline">{t.status.replace('_', ' ')}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
           </>
         )}
 
@@ -299,6 +313,50 @@ export function PropertyPanel({
             />
           </>
         )}
+
+        {/* Threats section — shared for nodes and edges */}
+        <Divider />
+        <div className={styles.field}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text size={200} weight="semibold">
+              <ShieldTask20Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+              Threats ({linkedThreats.length})
+            </Text>
+            <Button
+              size="small"
+              appearance="subtle"
+              icon={<Add16Regular />}
+              onClick={() => setAddThreatOpen(true)}
+            >
+              Add
+            </Button>
+          </div>
+          {linkedThreats.map((t: any) => (
+            <div
+              key={t.id}
+              className={styles.threatItem}
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigateToThreat(t.id)}
+              title="Click to view in Threats list"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text size={200} weight="semibold" block>{t.title}</Text>
+                <ArrowRight16Regular style={{ opacity: 0.5, flexShrink: 0 }} />
+              </div>
+              <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                <Badge size="small" color={
+                  t.severity === 'CRITICAL' ? 'danger' :
+                  t.severity === 'HIGH' ? 'important' :
+                  t.severity === 'MEDIUM' ? 'warning' : 'informative'
+                }>{t.severity}</Badge>
+                <Badge size="small" appearance="outline">{t.status.replace('_', ' ')}</Badge>
+              </div>
+            </div>
+          ))}
+          {linkedThreats.length === 0 && (
+            <Text size={200} style={{ opacity: 0.5, fontStyle: 'italic' }}>No threats linked</Text>
+          )}
+        </div>
       </div>
 
       <div className={styles.actions}>
@@ -343,6 +401,56 @@ export function PropertyPanel({
           </DialogSurface>
         </Dialog>
       </div>
+
+      {/* Add Threat Dialog */}
+      <Dialog open={addThreatOpen} onOpenChange={(_e, d) => setAddThreatOpen(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Add Threat</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                <Input
+                  placeholder="Threat title"
+                  value={newThreat.title}
+                  onChange={(_e, d) => setNewThreat({ ...newThreat, title: d.value })}
+                />
+                <Textarea
+                  placeholder="Description"
+                  value={newThreat.description}
+                  onChange={(_e, d) => setNewThreat({ ...newThreat, description: d.value })}
+                  rows={3}
+                />
+                <Dropdown
+                  value={newThreat.strideCategory}
+                  selectedOptions={[newThreat.strideCategory]}
+                  onOptionSelect={(_e, d) => setNewThreat({ ...newThreat, strideCategory: d.optionValue || 'SPOOFING' })}
+                >
+                  {['SPOOFING', 'TAMPERING', 'REPUDIATION', 'INFORMATION_DISCLOSURE', 'DENIAL_OF_SERVICE', 'ELEVATION_OF_PRIVILEGE'].map((c) => (
+                    <Option key={c} value={c}>{c.replace(/_/g, ' ')}</Option>
+                  ))}
+                </Dropdown>
+                <Dropdown
+                  value={newThreat.severity}
+                  selectedOptions={[newThreat.severity]}
+                  onOptionSelect={(_e, d) => setNewThreat({ ...newThreat, severity: d.optionValue || 'MEDIUM' })}
+                >
+                  {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].map((s) => (
+                    <Option key={s} value={s}>{s}</Option>
+                  ))}
+                </Dropdown>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <DialogTrigger>
+                <Button appearance="secondary">Cancel</Button>
+              </DialogTrigger>
+              <Button appearance="primary" onClick={handleAddThreat} disabled={!newThreat.title.trim()}>
+                Add Threat
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

@@ -33,12 +33,13 @@ threatRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
 
 // List threats (with optional filters)
 threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const { threatModelId, strideCategory, severity, status, componentId } = req.query;
+  const { threatModelId, strideCategory, severity, status, componentId, dataFlowId } = req.query;
 
   const threats = await prisma.threat.findMany({
     where: {
       ...(threatModelId && { threatModelId: threatModelId as string }),
       ...(componentId && { componentId: componentId as string }),
+      ...(dataFlowId && { dataFlowId: dataFlowId as string }),
       ...(strideCategory && { strideCategory: strideCategory as any }),
       ...(severity && { severity: severity as any }),
       ...(status && { status: status as any }),

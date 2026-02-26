@@ -386,6 +386,28 @@ export function DfdCanvas() {
     loadModel();
   }, [loadModel]);
 
+  // Auto-focus a component or edge from ?focus= query param
+  useEffect(() => {
+    const focusId = searchParams.get('focus');
+    if (!focusId || loading) return;
+
+    // Try to find as a node first, then as an edge
+    const node = nodes.find((n) => n.id === focusId);
+    if (node) {
+      setSelectedNode(node);
+      setSelectedEdge(null);
+      const rect = { right: 100, top: 100 };
+      setActionNode({ nodeId: node.id, x: rect.right, y: rect.top });
+      return;
+    }
+    const edge = edges.find((e) => e.id === focusId);
+    if (edge) {
+      setSelectedEdge(edge);
+      setSelectedNode(null);
+      setActionNode(null);
+    }
+  }, [searchParams, loading, nodes, edges]);
+
   const handleTabSelect = (_event: unknown, data: { value: unknown }) => {
     const diagramId = data.value as string;
     selectDiagram(diagramId, diagrams, commentCounts);
