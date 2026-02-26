@@ -31,6 +31,7 @@ import {
   Edit20Regular,
   Eye20Regular,
   BrainCircuit20Regular,
+  Delete20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
@@ -531,6 +532,23 @@ export function ThreatList() {
                     }}
                   >
                     Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    style={{ color: tokens.colorPaletteRedForeground1 }}
+                    icon={<Delete20Regular />}
+                    onClick={async () => {
+                      if (!confirm(`Delete threat "${threat.title}"?`)) return;
+                      try {
+                        await api.deleteThreat(threat.id);
+                        loadThreats();
+                      } catch (err) {
+                        console.error('Failed to delete threat:', err);
+                      }
+                    }}
+                  >
+                    Delete
                   </Button>
                   <Button
                     size="small"
