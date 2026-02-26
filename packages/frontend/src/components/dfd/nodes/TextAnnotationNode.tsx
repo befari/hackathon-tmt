@@ -10,7 +10,7 @@ const useStyles = makeStyles({
     fontSize: '11px',
     lineHeight: '1.4',
     overflow: 'hidden',
-    cursor: 'pointer',
+    pointerEvents: 'none' as const,
     whiteSpace: 'pre-wrap' as const,
     wordBreak: 'break-word' as const,
   },

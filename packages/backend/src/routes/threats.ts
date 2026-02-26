@@ -44,11 +44,10 @@ threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
       ...(status && { status: status as any }),
     },
     include: {
-      component: { select: { id: true, name: true, type: true } },
+      component: { select: { id: true, name: true, type: true, diagramId: true } },
       dataFlow: { select: { id: true, label: true } },
       _count: { select: { comments: true } },
     },
-    orderBy: [{ severity: 'asc' }],
   });
 
   // Custom severity order (CRITICAL first)

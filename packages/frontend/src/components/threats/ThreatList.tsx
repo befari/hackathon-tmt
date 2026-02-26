@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -28,6 +28,8 @@ import {
   ChevronDown20Regular,
   ChevronUp20Regular,
   Add20Regular,
+  Edit20Regular,
+  Eye20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
@@ -152,6 +154,9 @@ export function ThreatList() {
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
+  const [editOpen, setEditOpen] = useState(false);
+  const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
+  const navigate = useNavigate();
 
   const loadThreats = useCallback(() => {
     if (!id) return;
@@ -252,6 +257,24 @@ export function ThreatList() {
       console.error('Failed to create threat:', err);
     }
   }, [id, newThreat, loadThreats]);
+
+  const handleEditThreat = useCallback(async () => {
+    if (!editThreat) return;
+    try {
+      await api.updateThreat(editThreat.id, {
+        title: editThreat.title,
+        description: editThreat.description,
+        strideCategory: editThreat.strideCategory,
+        severity: editThreat.severity,
+        mitigationNotes: editThreat.mitigationNotes,
+      });
+      setEditOpen(false);
+      setEditThreat(null);
+      loadThreats();
+    } catch (err) {
+      console.error('Failed to update threat:', err);
+    }
+  }, [editThreat, loadThreats]);
 
   if (loading) {
     return (
@@ -395,6 +418,34 @@ export function ThreatList() {
                       🔗 {(threat as any).dataFlow.label}
                     </Badge>
                   )}
+                  {(threat as any).component?.diagramId && (
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<Eye20Regular />}
+                      onClick={() => navigate(`/model/${id}?diagram=${(threat as any).component.diagramId}&highlight=${(threat as any).component.id}`)}
+                    >
+                      View in DFD
+                    </Button>
+                  )}
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<Edit20Regular />}
+                    onClick={() => {
+                      setEditThreat({
+                        id: threat.id,
+                        title: threat.title,
+                        description: threat.description,
+                        strideCategory: threat.strideCategory,
+                        severity: threat.severity,
+                        mitigationNotes: (threat as any).mitigationNotes || '',
+                      });
+                      setEditOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     size="small"
                     appearance="subtle"
@@ -497,6 +548,63 @@ export function ThreatList() {
           ))}
         </div>
       )}
+
+      {/* Edit Threat Dialog */}
+      <Dialog open={editOpen} onOpenChange={(_e, data) => { if (!data.open) { setEditOpen(false); setEditThreat(null); } }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Edit Threat</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <Input
+                  placeholder="Threat title"
+                  value={editThreat?.title || ''}
+                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, title: d.value } : null)}
+                />
+                <Textarea
+                  placeholder="Description of the threat..."
+                  value={editThreat?.description || ''}
+                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, description: d.value } : null)}
+                  rows={3}
+                />
+                <Dropdown
+                  value={strideLabels[editThreat?.strideCategory || ''] || editThreat?.strideCategory || ''}
+                  selectedOptions={[editThreat?.strideCategory || '']}
+                  onOptionSelect={(_e, d) => setEditThreat(prev => prev ? { ...prev, strideCategory: d.optionValue as string } : null)}
+                >
+                  <Option value="SPOOFING">Spoofing</Option>
+                  <Option value="TAMPERING">Tampering</Option>
+                  <Option value="REPUDIATION">Repudiation</Option>
+                  <Option value="INFO_DISCLOSURE">Info Disclosure</Option>
+                  <Option value="DENIAL_OF_SERVICE">Denial of Service</Option>
+                  <Option value="ELEVATION_OF_PRIVILEGE">Elevation of Privilege</Option>
+                </Dropdown>
+                <Dropdown
+                  value={editThreat?.severity || ''}
+                  selectedOptions={[editThreat?.severity || '']}
+                  onOptionSelect={(_e, d) => setEditThreat(prev => prev ? { ...prev, severity: d.optionValue as string } : null)}
+                >
+                  <Option value="CRITICAL">Critical</Option>
+                  <Option value="HIGH">High</Option>
+                  <Option value="MEDIUM">Medium</Option>
+                  <Option value="LOW">Low</Option>
+                  <Option value="INFO">Info</Option>
+                </Dropdown>
+                <Textarea
+                  placeholder="Mitigation notes..."
+                  value={editThreat?.mitigationNotes || ''}
+                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, mitigationNotes: d.value } : null)}
+                  rows={3}
+                />
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => { setEditOpen(false); setEditThreat(null); }}>Cancel</Button>
+              <Button appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

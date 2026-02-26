@@ -18,8 +18,13 @@ import {
   Input,
   Textarea,
   Checkbox,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from '@fluentui/react-components';
-import { Add20Regular, Shield20Regular, ArrowUpload20Regular } from '@fluentui/react-icons';
+import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
 import { api } from '../../api/client';
 
@@ -74,6 +79,10 @@ export function Dashboard() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [contributeAsRef, setContributeAsRef] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editModel, setEditModel] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteModel, setDeleteModel] = useState<{ id: string; name: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +122,22 @@ export function Dashboard() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleEditModel = async () => {
+    if (!editModel) return;
+    await api.updateThreatModel(editModel.id, { name: editModel.name, description: editModel.description });
+    setModels(prev => prev.map(m => m.id === editModel.id ? { ...m, name: editModel.name, description: editModel.description } : m));
+    setEditDialogOpen(false);
+    setEditModel(null);
+  };
+
+  const handleDeleteModel = async () => {
+    if (!deleteModel) return;
+    await api.deleteThreatModel(deleteModel.id);
+    setModels(prev => prev.filter(m => m.id !== deleteModel.id));
+    setDeleteDialogOpen(false);
+    setDeleteModel(null);
   };
 
   const statusColor: Record<string, 'informative' | 'warning' | 'success' | 'important'> = {
@@ -202,6 +227,42 @@ export function Dashboard() {
               <CardHeader
                 header={<Text weight="semibold">{model.name}</Text>}
                 description={model.description || 'No description'}
+                action={
+                  <Menu>
+                    <MenuTrigger>
+                      <Button
+                        appearance="subtle"
+                        icon={<MoreVertical20Regular />}
+                        size="small"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </MenuTrigger>
+                    <MenuPopover>
+                      <MenuList>
+                        <MenuItem
+                          icon={<Edit20Regular />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModel({ id: model.id, name: model.name, description: model.description || '' });
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          Edit Details
+                        </MenuItem>
+                        <MenuItem
+                          icon={<Delete20Regular />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteModel({ id: model.id, name: model.name });
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          Delete
+                        </MenuItem>
+                      </MenuList>
+                    </MenuPopover>
+                  </Menu>
+                }
               />
               <div className={styles.cardMeta}>
                 <Badge appearance="outline" color={statusColor[model.status] || 'informative'}>
@@ -245,6 +306,52 @@ export function Dashboard() {
               <Button appearance="primary" onClick={handleConfirmImport} disabled={importing}>
                 {importing ? 'Importing…' : 'Import'}
               </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Edit Threat Model Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(_e, data) => { if (!data.open) { setEditDialogOpen(false); setEditModel(null); } }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Edit Threat Model</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                <Input
+                  placeholder="Threat model name"
+                  value={editModel?.name || ''}
+                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, name: d.value } : null)}
+                />
+                <Textarea
+                  placeholder="Description (optional)"
+                  value={editModel?.description || ''}
+                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, description: d.value } : null)}
+                  rows={3}
+                />
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => { setEditDialogOpen(false); setEditModel(null); }}>Cancel</Button>
+              <Button appearance="primary" onClick={handleEditModel} disabled={!editModel?.name.trim()}>Save</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Delete Threat Model Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(_e, data) => { if (!data.open) { setDeleteDialogOpen(false); setDeleteModel(null); } }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Delete Threat Model</DialogTitle>
+            <DialogContent>
+              <Text>
+                Are you sure you want to delete <Text weight="semibold">{deleteModel?.name}</Text>? This will permanently remove all diagrams, components, data flows, and threats. This action cannot be undone.
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => { setDeleteDialogOpen(false); setDeleteModel(null); }}>Cancel</Button>
+              <Button appearance="primary" style={{ backgroundColor: tokens.colorPaletteRedBackground3 }} onClick={handleDeleteModel}>Delete</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
