@@ -6,12 +6,11 @@ const useStyles = makeStyles({
     position: 'relative' as const,
   },
   node: {
-    padding: '16px 24px',
+    padding: '8px 16px',
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center' as const,
-    backgroundColor: 'transparent',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    backgroundColor: 'rgba(180, 40, 40, 0.05)',
     border: `2px dashed ${tokens.colorPaletteRedBorder1}`,
     borderRadius: tokens.borderRadiusXLarge,
     color: tokens.colorPaletteRedForeground1,
@@ -29,6 +28,9 @@ const useStyles = makeStyles({
 export function TrustBoundaryNode({ data }: NodeProps) {
   const styles = useStyles();
   const commentCount = (data as any).commentCount || 0;
+  const meta = (data as any).metadata || {};
+  const width = meta.width ? `${meta.width}px` : undefined;
+  const height = meta.height ? `${meta.height}px` : undefined;
 
   return (
     <>
@@ -37,7 +39,7 @@ export function TrustBoundaryNode({ data }: NodeProps) {
       <Handle type="source" position={Position.Left} id="left-src" />
       <Handle type="target" position={Position.Left} id="left-tgt" />
       <div className={styles.wrapper}>
-        <div className={styles.node}>
+        <div className={styles.node} style={{ width, height }}>
           <Text size={200} weight="semibold">
             {(data as any).label}
           </Text>

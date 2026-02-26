@@ -161,18 +161,23 @@ function diagramToNodesAndEdges(
 ) {
   if (!diagram) return { flowNodes: [] as Node[], flowEdges: [] as Edge[] };
 
-  const flowNodes: Node[] = (diagram.components || []).map((comp: Component) => ({
-    id: comp.id,
-    type: componentTypeToNodeType(comp.type),
-    position: { x: comp.positionX, y: comp.positionY },
-    data: {
-      label: comp.name,
-      description: comp.description,
-      sourceFiles: comp.sourceFiles,
-      componentType: comp.type,
-      commentCount: commentCounts[comp.id] || 0,
-    },
-  }));
+  const flowNodes: Node[] = (diagram.components || []).map((comp: Component) => {
+    const isBoundary = comp.type === 'TRUST_BOUNDARY';
+    return {
+      id: comp.id,
+      type: componentTypeToNodeType(comp.type),
+      position: { x: comp.positionX, y: comp.positionY },
+      zIndex: isBoundary ? -1 : 1,
+      data: {
+        label: comp.name,
+        description: comp.description,
+        sourceFiles: comp.sourceFiles,
+        componentType: comp.type,
+        metadata: (comp as any).metadata || {},
+        commentCount: commentCounts[comp.id] || 0,
+      },
+    };
+  });
 
   const flowEdges: Edge[] = (diagram.dataFlows || []).map((flow: DataFlow) => ({
     id: flow.id,

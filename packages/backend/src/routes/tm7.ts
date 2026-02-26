@@ -112,11 +112,16 @@ tm7Router.post('/import', (req: Request, res: Response) => {
             const component = await tx.component.create({
               data: {
                 name: elem.name,
-                type: elem.type, // Already matches our enum
+                type: elem.type,
                 description: elem.description || formatDescription(elem),
                 sourceFiles: [],
                 positionX: elem.position.x,
                 positionY: elem.position.y,
+                metadata: {
+                  width: elem.size.width,
+                  height: elem.size.height,
+                  importedFrom: 'tm7',
+                },
                 diagramId: diagram.id,
               },
             });
