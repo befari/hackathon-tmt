@@ -62,7 +62,7 @@ export interface Tm7Element {
   /** For trust boundaries: 'box' (BorderBoundary) or 'line' (LineBoundary) */
   boundaryStyle?: 'box' | 'line';
   /** For LineBoundary: source and target coordinates of the line */
-  lineCoords?: { sourceX: number; sourceY: number; targetX: number; targetY: number };
+  lineCoords?: { sourceX: number; sourceY: number; targetX: number; targetY: number; handleX?: number; handleY?: number };
   /** Additional custom properties */
   properties: Record<string, string>;
 }

@@ -239,6 +239,12 @@ function extractFlows(surface: any): { flows: Tm7Flow[]; lineBoundaries: Tm7Elem
       const sy = parseFloat(getText(val.SourceY) || '0');
       const tx = parseFloat(getText(val.TargetX) || '0');
       const ty = parseFloat(getText(val.TargetY) || '0');
+      const hx = parseFloat(getText(val.HandleX) || '0');
+      const hy = parseFloat(getText(val.HandleY) || '0');
+
+      // Use HandleX for the x position when available (it's where the line visually sits)
+      const posX = hx ? hx : Math.min(sx, tx);
+      const posY = Math.min(sy, ty);
 
       lineBoundaries.push({
         guid,
@@ -247,11 +253,11 @@ function extractFlows(surface: any): { flows: Tm7Flow[]; lineBoundaries: Tm7Elem
         description: '',
         outOfScope: false,
         outOfScopeReason: '',
-        position: { x: Math.min(sx, tx), y: Math.min(sy, ty) },
+        position: { x: posX, y: posY },
         size: { width: Math.abs(tx - sx) || 4, height: Math.abs(ty - sy) || 4 },
         properties: {},
         boundaryStyle: 'line',
-        lineCoords: { sourceX: sx, sourceY: sy, targetX: tx, targetY: ty },
+        lineCoords: { sourceX: sx, sourceY: sy, targetX: tx, targetY: ty, handleX: hx, handleY: hy },
       });
       continue;
     }
