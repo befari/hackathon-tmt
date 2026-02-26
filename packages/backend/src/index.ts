@@ -21,6 +21,9 @@ const PORT = process.env.PORT || 3001;
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
 });
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',

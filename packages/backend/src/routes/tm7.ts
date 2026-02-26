@@ -10,10 +10,13 @@ import {
   submitAIFeedback,
 } from '../services/ai/referenceStore.js';
 
+import { tmpdir } from 'os';
+import { join } from 'path';
+
 const prisma = new PrismaClient();
 
 const upload = multer({
-  dest: 'uploads/',
+  dest: join(tmpdir(), 'superior-tmt-uploads'),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
   fileFilter: (_req, file, cb) => {
     if (file.originalname.toLowerCase().endsWith('.tm7')) {

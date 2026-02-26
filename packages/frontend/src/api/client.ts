@@ -6,6 +6,29 @@ export function setTokenProvider(provider: () => Promise<string | null>) {
   tokenProvider = provider;
 }
 
+async function fetchWithRetry(url: string, options: RequestInit, retries = 2, delay = 1000): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      // Retry on 502/503/504 (proxy errors when backend is restarting)
+      if (res.status >= 502 && res.status <= 504 && attempt < retries) {
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      // Network error (backend down) — retry
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Unreachable, but satisfies TS
+  return fetch(url, options);
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -19,7 +42,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     }
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchWithRetry(`${API_BASE}${path}`, {
     ...options,
     headers,
   });
@@ -136,7 +159,7 @@ export const api = {
       const token = await tokenProvider();
       if (token) headers['Authorization'] = `Bearer ${token}`;
     }
-    const res = await fetch(`${API_BASE}/tm7/import`, {
+    const res = await fetchWithRetry(`${API_BASE}/tm7/import`, {
       method: 'POST',
       headers,
       body: formData,

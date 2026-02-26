@@ -6,19 +6,12 @@ import { msalInstance, isAuthEnabled } from './auth/msalConfig';
 import App from './App';
 
 function Root() {
-  if (isAuthEnabled) {
-    return (
-      <MsalProvider instance={msalInstance}>
-        <FluentProvider theme={webDarkTheme}>
-          <App />
-        </FluentProvider>
-      </MsalProvider>
-    );
-  }
   return (
-    <FluentProvider theme={webDarkTheme}>
-      <App />
-    </FluentProvider>
+    <MsalProvider instance={msalInstance}>
+      <FluentProvider theme={webDarkTheme}>
+        <App />
+      </FluentProvider>
+    </MsalProvider>
   );
 }
 

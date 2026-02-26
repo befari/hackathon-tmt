@@ -78,19 +78,13 @@ export function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch('/api/threat-models')
-      .then((r) => r.json())
-      .then((r) => setModels(r.data || []))
+    api.listThreatModels()
+      .then((r: any) => setModels(r.data || []))
       .catch(console.error);
   }, []);
 
   const handleCreate = async () => {
-    const res = await fetch('/api/threat-models', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, description: newDesc }),
-    });
-    const { data } = await res.json();
+    const { data } = await api.createThreatModel({ name: newName, description: newDesc });
     setDialogOpen(false);
     setNewName('');
     setNewDesc('');
