@@ -25,6 +25,7 @@ import {
   CodeRegular,
   SettingsRegular,
   HardDriveRegular,
+  DividerTallRegular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -74,6 +75,7 @@ interface PaletteSubtype {
   subtype: string;
   label: string;
   icon: ReactNode;
+  nodeType?: string; // Override parent nodeType for this subtype
 }
 
 interface PaletteCategory {
@@ -135,6 +137,7 @@ const PALETTE_CATEGORIES: PaletteCategory[] = [
       { subtype: 'session', label: 'User Session', icon: <PersonRegular fontSize={14} /> },
       { subtype: 'system', label: 'System Boundary', icon: <ShieldRegular fontSize={14} /> },
       { subtype: 'process', label: 'Process Space', icon: <LockClosedRegular fontSize={14} /> },
+      { subtype: 'line', label: 'Boundary Line', icon: <DividerTallRegular fontSize={14} />, nodeType: 'trustBoundaryLine' },
     ],
   },
 ];
@@ -179,7 +182,7 @@ export function ComponentPalette() {
                 key={sub.subtype}
                 className={styles.item}
                 draggable
-                onDragStart={(e) => onDragStart(e, cat.type, cat.nodeType, sub.subtype)}
+                onDragStart={(e) => onDragStart(e, cat.type, sub.nodeType || cat.nodeType, sub.subtype)}
               >
                 {sub.icon}
                 <Text size={200}>{sub.label}</Text>

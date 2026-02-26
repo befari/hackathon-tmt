@@ -30,6 +30,7 @@ const STENCIL_TYPE_MAP: Record<string, Tm7ElementType> = {
   StencilParallelLines: 'DATA_STORE',
   StencilRectangle: 'EXTERNAL_ENTITY',
   BorderBoundary: 'TRUST_BOUNDARY',
+  LineBoundary: 'TRUST_BOUNDARY',
 };
 
 /**
@@ -128,7 +129,9 @@ function extractDiagrams(root: any): {
     const name = getPropertyValue(surface, 'Name') || `Diagram`;
 
     const elements = extractElements(surface, guidNameMap);
-    const flows = extractFlows(surface);
+    const { flows, lineBoundaries } = extractFlows(surface);
+    // LineBoundary elements are in the Lines section, add them to elements
+    elements.push(...lineBoundaries);
 
     diagrams.push({ guid, name, elements, flows });
   }
@@ -167,11 +170,27 @@ function extractElements(
     const outOfScopeReason =
       getPropertyValue(val, 'Reason For Out Of Scope') || '';
 
-    // Position and size
-    const x = parseFloat(getText(val.Left) || '0');
-    const y = parseFloat(getText(val.Top) || '0');
-    const width = parseFloat(getText(val.Width) || '100');
-    const height = parseFloat(getText(val.Height) || '100');
+    // Position and size — LineBoundary uses Source/Target coords, BorderBoundary uses Left/Top/Width/Height
+    const isLineBoundary = bareType === 'LineBoundary';
+    let x: number, y: number, width: number, height: number;
+    let lineCoords: { sourceX: number; sourceY: number; targetX: number; targetY: number } | undefined;
+
+    if (isLineBoundary) {
+      const sx = parseFloat(getText(val.SourceX) || '0');
+      const sy = parseFloat(getText(val.SourceY) || '0');
+      const tx = parseFloat(getText(val.TargetX) || '0');
+      const ty = parseFloat(getText(val.TargetY) || '0');
+      x = Math.min(sx, tx);
+      y = Math.min(sy, ty);
+      width = Math.abs(tx - sx) || 4; // Lines may be nearly vertical/horizontal
+      height = Math.abs(ty - sy) || 4;
+      lineCoords = { sourceX: sx, sourceY: sy, targetX: tx, targetY: ty };
+    } else {
+      x = parseFloat(getText(val.Left) || '0');
+      y = parseFloat(getText(val.Top) || '0');
+      width = parseFloat(getText(val.Width) || '100');
+      height = parseFloat(getText(val.Height) || '100');
+    }
 
     // Collect additional custom properties
     const properties = extractAllProperties(val);
@@ -188,23 +207,54 @@ function extractElements(
       position: { x, y },
       size: { width, height },
       properties,
+      boundaryStyle: isLineBoundary ? 'line' : (bareType === 'BorderBoundary' ? 'box' : undefined),
+      lineCoords,
     });
   }
 
   return elements;
 }
 
-function extractFlows(surface: any): Tm7Flow[] {
+function extractFlows(surface: any): { flows: Tm7Flow[]; lineBoundaries: Tm7Element[] } {
   const linesObj = surface.Lines;
-  if (!linesObj) return [];
+  if (!linesObj) return { flows: [], lineBoundaries: [] };
 
   const kvPairs = ensureArray(linesObj.KeyValueOfguidanyType);
   const flows: Tm7Flow[] = [];
+  const lineBoundaries: Tm7Element[] = [];
 
   for (const kv of kvPairs) {
     const key = getText(kv.Key) || '';
     const val = kv.Value;
     if (!val) continue;
+
+    // Check if this is a LineBoundary (trust boundary line) vs a Connector (data flow)
+    const xsiType = val['@_type'] || '';
+    const bareType = xsiType.includes(':') ? xsiType.split(':').pop()! : xsiType;
+
+    if (bareType === 'LineBoundary') {
+      const guid = getText(val.Guid) || key;
+      const name = getPropertyValue(val, 'Name') || 'Boundary Line';
+      const sx = parseFloat(getText(val.SourceX) || '0');
+      const sy = parseFloat(getText(val.SourceY) || '0');
+      const tx = parseFloat(getText(val.TargetX) || '0');
+      const ty = parseFloat(getText(val.TargetY) || '0');
+
+      lineBoundaries.push({
+        guid,
+        name,
+        type: 'TRUST_BOUNDARY',
+        description: '',
+        outOfScope: false,
+        outOfScopeReason: '',
+        position: { x: Math.min(sx, tx), y: Math.min(sy, ty) },
+        size: { width: Math.abs(tx - sx) || 4, height: Math.abs(ty - sy) || 4 },
+        properties: {},
+        boundaryStyle: 'line',
+        lineCoords: { sourceX: sx, sourceY: sy, targetX: tx, targetY: ty },
+      });
+      continue;
+    }
 
     const label = getPropertyValue(val, 'Name') || '';
     const sourceGuid = getText(val.SourceGuid) || '';
@@ -220,7 +270,7 @@ function extractFlows(surface: any): Tm7Flow[] {
     });
   }
 
-  return flows;
+  return { flows, lineBoundaries };
 }
 
 // ─── Threats ────────────────────────────────────────────

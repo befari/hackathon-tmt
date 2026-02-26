@@ -1,9 +1,11 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   wrapper: {
     position: 'relative' as const,
+    width: '100%',
+    height: '100%',
   },
   node: {
     padding: '8px 16px',
@@ -14,6 +16,8 @@ const useStyles = makeStyles({
     border: `2px dashed ${tokens.colorPaletteRedBorder1}`,
     borderRadius: tokens.borderRadiusXLarge,
     color: tokens.colorPaletteRedForeground1,
+    width: '100%',
+    height: '100%',
     minWidth: '200px',
     minHeight: '100px',
     cursor: 'pointer',
@@ -25,21 +29,25 @@ const useStyles = makeStyles({
   },
 });
 
-export function TrustBoundaryNode({ data }: NodeProps) {
+export function TrustBoundaryNode({ data, selected }: NodeProps) {
   const styles = useStyles();
   const commentCount = (data as any).commentCount || 0;
-  const meta = (data as any).metadata || {};
-  const width = meta.width ? `${meta.width}px` : undefined;
-  const height = meta.height ? `${meta.height}px` : undefined;
 
   return (
     <>
+      <NodeResizer
+        isVisible={selected}
+        minWidth={200}
+        minHeight={100}
+        lineStyle={{ borderColor: tokens.colorPaletteRedBorder1 }}
+        handleStyle={{ backgroundColor: tokens.colorPaletteRedBorder1, width: 8, height: 8 }}
+      />
       <Handle type="source" position={Position.Top} id="top-src" />
       <Handle type="target" position={Position.Top} id="top-tgt" />
       <Handle type="source" position={Position.Left} id="left-src" />
       <Handle type="target" position={Position.Left} id="left-tgt" />
       <div className={styles.wrapper}>
-        <div className={styles.node} style={{ width, height }}>
+        <div className={styles.node}>
           <Text size={200} weight="semibold">
             {(data as any).label}
           </Text>

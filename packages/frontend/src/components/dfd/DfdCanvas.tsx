@@ -50,6 +50,7 @@ import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
 import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
+import { TrustBoundaryLineNode } from './nodes/TrustBoundaryLineNode';
 import { ComponentPalette } from './ComponentPalette';
 import { PropertyPanel } from './PropertyPanel';
 import { AIRatingWidget } from './AIRatingWidget';
@@ -62,6 +63,7 @@ const nodeTypes = {
   dataStore: DataStoreNode,
   externalEntity: ExternalEntityNode,
   trustBoundary: TrustBoundaryNode,
+  trustBoundaryLine: TrustBoundaryLineNode,
 };
 
 const useStyles = makeStyles({
@@ -163,17 +165,26 @@ function diagramToNodesAndEdges(
 
   const flowNodes: Node[] = (diagram.components || []).map((comp: Component) => {
     const isBoundary = comp.type === 'TRUST_BOUNDARY';
+    const meta = (comp as any).metadata || {};
+    const isLineBoundary = meta.boundaryStyle === 'line';
+    const nodeType = isBoundary && isLineBoundary
+      ? 'trustBoundaryLine'
+      : componentTypeToNodeType(comp.type);
     return {
       id: comp.id,
-      type: componentTypeToNodeType(comp.type),
+      type: nodeType,
       position: { x: comp.positionX, y: comp.positionY },
       zIndex: isBoundary ? -1 : 1,
+      ...(isBoundary && !isLineBoundary && meta.width ? {
+        style: { width: meta.width, height: meta.height },
+        resizing: true,
+      } : {}),
       data: {
         label: comp.name,
         description: comp.description,
         sourceFiles: comp.sourceFiles,
         componentType: comp.type,
-        metadata: (comp as any).metadata || {},
+        metadata: meta,
         commentCount: commentCounts[comp.id] || 0,
       },
     };

@@ -121,6 +121,8 @@ tm7Router.post('/import', (req: Request, res: Response) => {
                   width: elem.size.width,
                   height: elem.size.height,
                   importedFrom: 'tm7',
+                  ...(elem.boundaryStyle && { boundaryStyle: elem.boundaryStyle }),
+                  ...(elem.lineCoords && { lineCoords: elem.lineCoords }),
                 },
                 diagramId: diagram.id,
               },

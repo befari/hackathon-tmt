@@ -59,6 +59,10 @@ export interface Tm7Element {
   position: { x: number; y: number };
   /** Size on canvas */
   size: { width: number; height: number };
+  /** For trust boundaries: 'box' (BorderBoundary) or 'line' (LineBoundary) */
+  boundaryStyle?: 'box' | 'line';
+  /** For LineBoundary: source and target coordinates of the line */
+  lineCoords?: { sourceX: number; sourceY: number; targetX: number; targetY: number };
   /** Additional custom properties */
   properties: Record<string, string>;
 }
