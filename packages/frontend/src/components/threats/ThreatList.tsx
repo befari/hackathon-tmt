@@ -147,6 +147,7 @@ export function ThreatList() {
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [diagramFilter, setDiagramFilter] = useState<string>('');
   const [expandedThreat, setExpandedThreat] = useState<string | null>(null);
   const [threatComments, setThreatComments] = useState<Record<string, TmtComment[]>>({});
   const [newCommentText, setNewCommentText] = useState('');
@@ -285,11 +286,26 @@ export function ThreatList() {
     );
   }
 
+  // Extract unique diagrams from threats for filtering
+  const diagrams = Array.from(
+    new Map(
+      threats
+        .map((t: any) => t.dataFlow?.diagram)
+        .filter(Boolean)
+        .map((d: any) => [d.id, d.name])
+    ).entries()
+  ).map(([did, dname]) => ({ id: did, name: dname }));
+
+  // Filter threats by diagram if filter is set
+  const filteredThreats = diagramFilter
+    ? threats.filter((t: any) => t.dataFlow?.diagram?.id === diagramFilter)
+    : threats;
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <Text size={600} weight="semibold">
-          Threats ({threats.length})
+          Threats ({filteredThreats.length}{diagramFilter ? ` / ${threats.length}` : ''})
         </Text>
         <div className={styles.filters}>
           <Dropdown
@@ -315,6 +331,18 @@ export function ThreatList() {
             <Option value="ACCEPTED">Accepted</Option>
             <Option value="OUT_OF_SCOPE">Out of Scope</Option>
           </Dropdown>
+          {diagrams.length > 0 && (
+            <Dropdown
+              placeholder="DFD Diagram"
+              value={diagramFilter ? diagrams.find(d => d.id === diagramFilter)?.name || '' : ''}
+              onOptionSelect={(_e, d) => setDiagramFilter(d.optionValue as string || '')}
+            >
+              <Option value="">All Diagrams</Option>
+              {diagrams.map(d => (
+                <Option key={d.id} value={d.id}>{d.name}</Option>
+              ))}
+            </Dropdown>
+          )}
           <Dialog open={createOpen} onOpenChange={(_e, data) => setCreateOpen(data.open)}>
             <DialogTrigger>
               <Button appearance="primary" icon={<Add20Regular />}>Add Threat</Button>
@@ -372,7 +400,7 @@ export function ThreatList() {
         </div>
       </div>
 
-      {threats.length === 0 ? (
+      {filteredThreats.length === 0 ? (
         <div className={styles.empty}>
           <Text size={500} block>
             No threats found
@@ -383,7 +411,7 @@ export function ThreatList() {
         </div>
       ) : (
         <div className={styles.list}>
-          {threats.map((threat) => (
+          {filteredThreats.map((threat) => (
             <Card key={threat.id} className={styles.card}>
               <CardHeader
                 header={<Text weight="semibold">{threat.title}</Text>}
@@ -418,12 +446,20 @@ export function ThreatList() {
                       🔗 {(threat as any).dataFlow.label}
                     </Badge>
                   )}
-                  {(threat as any).component?.diagramId && (
+                  {(threat as any).dataFlow?.diagram && (
+                    <Badge appearance="outline" color="subtle">
+                      📄 {(threat as any).dataFlow.diagram.name}
+                    </Badge>
+                  )}
+                  {((threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId) && (
                     <Button
                       size="small"
                       appearance="subtle"
                       icon={<Eye20Regular />}
-                      onClick={() => navigate(`/model/${id}?diagram=${(threat as any).component.diagramId}&highlight=${(threat as any).component.id}`)}
+                      onClick={() => {
+                        const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
+                        navigate(`/model/${id}?diagram=${diagId}`);
+                      }}
                     >
                       View in DFD
                     </Button>

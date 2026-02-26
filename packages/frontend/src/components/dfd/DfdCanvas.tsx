@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef, type DragEvent, type KeyboardEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './dfd-dark.css';
+import { useUndoRedo } from './useUndoRedo';
 import {
   makeStyles,
   tokens,
@@ -45,6 +46,8 @@ import {
   Comment20Regular,
   Dismiss16Regular,
   ShieldTask20Regular,
+  ArrowUndo20Regular,
+  ArrowRedo20Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -275,6 +278,7 @@ function diagramToNodesAndEdges(
 export function DfdCanvas() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
@@ -288,6 +292,7 @@ export function DfdCanvas() {
   const [newDiagramDialogOpen, setNewDiagramDialogOpen] = useState(false);
   const [newDiagramName, setNewDiagramName] = useState('');
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
 
   // Node action bar / comment panel state
   const [actionNode, setActionNode] = useState<{ nodeId: string; x: number; y: number } | null>(null);
@@ -340,14 +345,18 @@ export function DfdCanvas() {
       const counts = countsRes.data?.componentCounts || {};
       setCommentCounts(counts);
 
-      const firstId = loadedDiagrams.length > 0 ? loadedDiagrams[0].id : null;
-      selectDiagram(firstId, loadedDiagrams, counts);
+      // Use diagram from query param if provided, otherwise first diagram
+      const queryDiagramId = searchParams.get('diagram');
+      const targetId = (queryDiagramId && loadedDiagrams.some(d => d.id === queryDiagramId))
+        ? queryDiagramId
+        : (loadedDiagrams.length > 0 ? loadedDiagrams[0].id : null);
+      selectDiagram(targetId, loadedDiagrams, counts);
       setLoading(false);
     }).catch((err) => {
       console.error('Failed to load threat model:', err);
       setLoading(false);
     });
-  }, [id, selectDiagram]);
+  }, [id, selectDiagram, searchParams]);
 
   useEffect(() => {
     loadModel();
@@ -493,6 +502,7 @@ export function DfdCanvas() {
         : componentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       try {
+        takeSnapshot(nodes, edges);
         const metadata = subtype ? { subtype } : undefined;
         const { data } = await api.addComponent(id, selectedDiagramId, {
           name: defaultName,
@@ -518,19 +528,21 @@ export function DfdCanvas() {
         console.error('Failed to add component:', err);
       }
     },
-    [id, selectedDiagramId, setNodes]
+    [id, selectedDiagramId, setNodes, nodes, edges, takeSnapshot]
   );
 
   // Persist node position after drag
   const onNodeDragStop: NodeMouseHandler = useCallback((_event, node) => {
+    takeSnapshot(nodes, edges);
     api.updateComponent(node.id, {
       positionX: node.position.x,
       positionY: node.position.y,
     }).catch((err) => console.error('Failed to persist position:', err));
-  }, []);
+  }, [nodes, edges, takeSnapshot]);
 
   // Delete selected element
   const handleDeleteSelected = useCallback(async () => {
+    takeSnapshot(nodes, edges);
     try {
       if (selectedNode) {
         await api.deleteComponent(selectedNode.id);
@@ -546,17 +558,25 @@ export function DfdCanvas() {
       console.error('Failed to delete:', err);
     }
     setDeleteDialogOpen(false);
-  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+  }, [selectedNode, selectedEdge, setNodes, setEdges, nodes, edges, takeSnapshot]);
 
-  // Keyboard delete
+  // Keyboard shortcuts
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if ((event.key === 'Delete' || event.key === 'Backspace') && (selectedNode || selectedEdge)) {
         event.preventDefault();
         setDeleteDialogOpen(true);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo(nodes, edges, setNodes, setEdges);
+      }
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
+        event.preventDefault();
+        redo(nodes, edges, setNodes, setEdges);
+      }
     },
-    [selectedNode, selectedEdge]
+    [selectedNode, selectedEdge, nodes, edges, setNodes, setEdges, undo, redo]
   );
 
   const openThreatDialog = useCallback((componentId: string, componentName: string) => {
@@ -658,6 +678,7 @@ export function DfdCanvas() {
     async (connection: Connection) => {
       if (!id || !selectedDiagramId || !connection.source || !connection.target) return;
       try {
+        takeSnapshot(nodes, edges);
         const { data } = await api.addDataFlow(id, selectedDiagramId, {
           label: 'New Flow',
           sourceId: connection.source,
@@ -680,7 +701,7 @@ export function DfdCanvas() {
         console.error('Failed to create data flow:', err);
       }
     },
-    [id, selectedDiagramId, setEdges]
+    [id, selectedDiagramId, setEdges, nodes, edges, takeSnapshot]
   );
 
   if (loading) {
@@ -764,6 +785,28 @@ export function DfdCanvas() {
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls style={{ backgroundColor: '#2d2d2d', borderColor: '#444', borderRadius: '8px' }} />
+          <Panel position="bottom-left" style={{ left: '50px', bottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <Button
+                appearance="subtle"
+                icon={<ArrowUndo20Regular />}
+                size="small"
+                disabled={!canUndo()}
+                onClick={() => undo(nodes, edges, setNodes, setEdges)}
+                title="Undo (Ctrl+Z)"
+                style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
+              />
+              <Button
+                appearance="subtle"
+                icon={<ArrowRedo20Regular />}
+                size="small"
+                disabled={!canRedo()}
+                onClick={() => redo(nodes, edges, setNodes, setEdges)}
+                title="Redo (Ctrl+Y)"
+                style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
+              />
+            </div>
+          </Panel>
           <MiniMap
             nodeStrokeWidth={3}
             zoomable

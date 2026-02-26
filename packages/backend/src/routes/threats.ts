@@ -45,7 +45,7 @@ threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
     },
     include: {
       component: { select: { id: true, name: true, type: true, diagramId: true } },
-      dataFlow: { select: { id: true, label: true } },
+      dataFlow: { select: { id: true, label: true, diagramId: true, diagram: { select: { id: true, name: true } } } },
       _count: { select: { comments: true } },
     },
   });
