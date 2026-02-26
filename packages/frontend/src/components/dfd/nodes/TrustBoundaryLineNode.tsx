@@ -1,12 +1,16 @@
-import { type NodeProps } from '@xyflow/react';
+import { NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   wrapper: {
     position: 'relative' as const,
+    width: '100%',
+    height: '100%',
   },
   line: {
     borderLeft: `3px dashed ${tokens.colorPaletteRedBorder1}`,
+    width: '100%',
+    height: '100%',
     minHeight: '100px',
     paddingLeft: '8px',
     display: 'flex',
@@ -23,14 +27,14 @@ const useStyles = makeStyles({
   },
 });
 
-export function TrustBoundaryLineNode({ data }: NodeProps) {
+export function TrustBoundaryLineNode({ data, selected }: NodeProps) {
   const styles = useStyles();
-  const meta = (data as any).metadata || {};
-  const height = meta.height ? `${meta.height}px` : '400px';
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.line} style={{ height }}>
+      <NodeResizer isVisible={selected} minWidth={10} minHeight={60}
+        handleStyle={{ backgroundColor: tokens.colorPaletteRedBorder1, width: 7, height: 7 }} />
+      <div className={styles.line}>
         <div className={styles.label}>
           <Text size={200} weight="semibold">
             {(data as any).label}

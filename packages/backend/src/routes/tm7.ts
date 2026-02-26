@@ -148,6 +148,10 @@ tm7Router.post('/import', (req: Request, res: Response) => {
                 sourceId,
                 targetId,
                 diagramId: diagram.id,
+                metadata: {
+                  portSource: flow.portSource || '',
+                  portTarget: flow.portTarget || '',
+                },
               },
             });
           }

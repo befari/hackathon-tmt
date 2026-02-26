@@ -159,6 +159,20 @@ function componentTypeToNodeType(type: string): string {
   return map[type] || 'process';
 }
 
+/**
+ * Maps TMT PortSource/PortTarget names to React Flow handle IDs.
+ * TMT ports: East, West, North, South, NorthWest, SouthWest, NorthEast, SouthEast, Auto
+ */
+function portToHandle(port: string, suffix: 'src' | 'tgt'): string | undefined {
+  if (!port || port === 'Auto' || port === 'AutoFix') return undefined;
+  const p = port.toLowerCase();
+  if (p.includes('east') && !p.includes('north') && !p.includes('south')) return `right-${suffix}`;
+  if (p.includes('west') && !p.includes('north') && !p.includes('south')) return `left-${suffix}`;
+  if (p.includes('north')) return `top-${suffix}`;
+  if (p.includes('south')) return `bottom-${suffix}`;
+  return undefined;
+}
+
 function diagramToNodesAndEdges(
   diagram: Diagram | undefined,
   commentCounts: Record<string, number>,
@@ -205,22 +219,29 @@ function diagramToNodesAndEdges(
     };
   });
 
-  const flowEdges: Edge[] = (diagram.dataFlows || []).map((flow: DataFlow) => ({
-    id: flow.id,
-    source: flow.sourceId,
-    target: flow.targetId,
-    label: flow.label,
-    animated: flow.crossesTrustBoundary,
-    style: {
-      stroke: flow.crossesTrustBoundary ? '#e74c3c' : '#6c757d',
-      strokeWidth: 2,
-    },
-    labelStyle: { fontSize: 11 },
-    data: {
-      protocol: flow.protocol || '',
-      dataClassification: flow.dataClassification || '',
-    },
-  }));
+  const flowEdges: Edge[] = (diagram.dataFlows || []).map((flow: DataFlow) => {
+    const meta = (flow as any).metadata || {};
+    const sourceHandle = portToHandle(meta.portSource, 'src');
+    const targetHandle = portToHandle(meta.portTarget, 'tgt');
+    return {
+      id: flow.id,
+      source: flow.sourceId,
+      target: flow.targetId,
+      ...(sourceHandle ? { sourceHandle } : {}),
+      ...(targetHandle ? { targetHandle } : {}),
+      label: flow.label,
+      animated: flow.crossesTrustBoundary,
+      style: {
+        stroke: flow.crossesTrustBoundary ? '#e74c3c' : '#6c757d',
+        strokeWidth: 2,
+      },
+      labelStyle: { fontSize: 11 },
+      data: {
+        protocol: flow.protocol || '',
+        dataClassification: flow.dataClassification || '',
+      },
+    };
+  });
 
   return { flowNodes, flowEdges };
 }

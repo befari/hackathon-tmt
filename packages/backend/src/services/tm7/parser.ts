@@ -259,6 +259,8 @@ function extractFlows(surface: any): { flows: Tm7Flow[]; lineBoundaries: Tm7Elem
     const label = getPropertyValue(val, 'Name') || '';
     const sourceGuid = getText(val.SourceGuid) || '';
     const targetGuid = getText(val.TargetGuid) || '';
+    const portSource = getText(val.PortSource) || '';
+    const portTarget = getText(val.PortTarget) || '';
     const properties = extractAllProperties(val);
 
     flows.push({
@@ -266,6 +268,8 @@ function extractFlows(surface: any): { flows: Tm7Flow[]; lineBoundaries: Tm7Elem
       label,
       sourceGuid,
       targetGuid,
+      portSource,
+      portTarget,
       properties,
     });
   }

@@ -76,6 +76,10 @@ export interface Tm7Flow {
   sourceGuid: string;
   /** Target element GUID */
   targetGuid: string;
+  /** Source port (e.g., "East", "West", "North", "South", "NorthWest", etc.) */
+  portSource: string;
+  /** Target port */
+  portTarget: string;
   /** Additional properties */
   properties: Record<string, string>;
 }
