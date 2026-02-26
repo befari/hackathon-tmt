@@ -428,6 +428,7 @@ threatModelRouter.post('/:id/generate-threats', asyncHandler(async (req, res) =>
 
   // Initialize AI client
   const { getOpenAIClient } = await import('../services/ai/orchestrator.js');
+  const { getBestReferenceExamples, formatFewShotPrompt } = await import('../services/ai/referenceStore.js');
   let client: any;
   try {
     client = getOpenAIClient();
@@ -435,6 +436,10 @@ threatModelRouter.post('/:id/generate-threats', asyncHandler(async (req, res) =>
     res.status(500).json({ error: err.message });
     return;
   }
+
+  // Load reference examples from imported .tm7 files for few-shot prompting
+  const refExamples = await getBestReferenceExamples(2);
+  const fewShotSection = formatFewShotPrompt(refExamples);
 
   // Build the component/flow ID maps for linking
   const allComponents = targetDiagrams.flatMap((d) => d.components);
@@ -472,7 +477,7 @@ Rules:
 - Assign realistic severity based on potential impact and likelihood
 - Confidence score (0-1) reflects how certain you are the threat applies
 - Include at least one threat per STRIDE category if applicable
-- Include suggested mitigations in the description`,
+- Include suggested mitigations in the description${fewShotSection}`,
       },
       {
         role: 'user',
