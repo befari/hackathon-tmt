@@ -66,6 +66,11 @@ export const api = {
     request<any>(`/threat-models/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteThreatModel: (id: string) =>
     request<any>(`/threat-models/${id}`, { method: 'DELETE' }),
+  generateThreats: (id: string, diagramId?: string) =>
+    request<any>(`/threat-models/${id}/generate-threats`, {
+      method: 'POST',
+      body: JSON.stringify(diagramId ? { diagramId } : {}),
+    }),
 
   // Diagrams
   listDiagrams: (modelId: string) => request<any>(`/threat-models/${modelId}/diagrams`),

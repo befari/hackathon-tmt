@@ -30,6 +30,7 @@ import {
   Add20Regular,
   Edit20Regular,
   Eye20Regular,
+  BrainCircuit20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
@@ -157,6 +158,7 @@ export function ThreatList() {
   const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
   const [editOpen, setEditOpen] = useState(false);
   const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
+  const [generating, setGenerating] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
@@ -205,6 +207,21 @@ export function ThreatList() {
       return () => clearTimeout(timeout);
     }
   }, [highlightId, loading, threats]);
+
+  const handleGenerateThreats = useCallback(async () => {
+    if (!id || generating) return;
+    setGenerating(true);
+    try {
+      const { data } = await api.generateThreats(id) as any;
+      loadThreats();
+      alert(`✅ ${data.message}`);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to generate threats';
+      alert(`❌ ${msg}`);
+    } finally {
+      setGenerating(false);
+    }
+  }, [id, generating, loadThreats]);
 
   const toggleComments = useCallback(async (threatId: string) => {
     if (expandedThreat === threatId) {
@@ -362,6 +379,14 @@ export function ThreatList() {
               ))}
             </Dropdown>
           )}
+          <Button
+            appearance="subtle"
+            icon={<BrainCircuit20Regular />}
+            onClick={handleGenerateThreats}
+            disabled={generating}
+          >
+            {generating ? 'Generating...' : 'Auto-Generate'}
+          </Button>
           <Dialog open={createOpen} onOpenChange={(_e, data) => setCreateOpen(data.open)}>
             <DialogTrigger>
               <Button appearance="primary" icon={<Add20Regular />}>Add Threat</Button>
