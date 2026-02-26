@@ -161,6 +161,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
               cx={rsx} cy={rsy} r={ptSize}
               fill={dragTarget === 'source' ? '#ff6b6b' : color}
               stroke="#fff" strokeWidth={2}
+              className="nodrag nopan"
               style={{ cursor: 'grab', pointerEvents: 'all' }}
               onMouseDown={(e) => startDrag('source', e)}
             />
@@ -169,6 +170,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
               cx={rtx} cy={rty} r={ptSize}
               fill={dragTarget === 'target' ? '#ff6b6b' : color}
               stroke="#fff" strokeWidth={2}
+              className="nodrag nopan"
               style={{ cursor: 'grab', pointerEvents: 'all' }}
               onMouseDown={(e) => startDrag('target', e)}
             />
@@ -177,6 +179,7 @@ export function TrustBoundaryLineNode({ id, data, selected }: NodeProps) {
               cx={rhx} cy={rhy} r={bendSize}
               fill={dragTarget === 'handle' ? '#ff6b6b' : '#4a9eff'}
               stroke="#fff" strokeWidth={2}
+              className="nodrag nopan"
               style={{ cursor: 'grab', pointerEvents: 'all' }}
               onMouseDown={(e) => startDrag('handle', e)}
               onDoubleClick={onHandleDoubleClick}
