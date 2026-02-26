@@ -4,6 +4,11 @@ import { readFile, unlink } from 'fs/promises';
 import { PrismaClient, StrideCategory, Severity, ThreatStatus } from '@prisma/client';
 import { parseTm7 } from '../services/tm7/index.js';
 import type { Tm7StrideCategory, Tm7ThreatState } from '../services/tm7/types.js';
+import {
+  storeReferenceExample,
+  getBestReferenceExamples,
+  submitAIFeedback,
+} from '../services/ai/referenceStore.js';
 
 const prisma = new PrismaClient();
 
@@ -175,9 +180,25 @@ tm7Router.post('/import', (req: Request, res: Response) => {
         return fullModel;
       });
 
+      // Opt-in: store as reference example for AI training
+      const contributeAsReference = req.body?.contributeAsReference === 'true';
+      let referenceId: string | undefined;
+      if (contributeAsReference) {
+        try {
+          referenceId = await storeReferenceExample(
+            req.file!.originalname.replace('.tm7', ''),
+            parsed,
+            req.file!.originalname
+          );
+        } catch (refErr) {
+          console.warn('Could not store reference example:', refErr);
+        }
+      }
+
       res.status(201).json({
         message: 'TM7 file imported successfully',
         threatModel: result,
+        referenceId,
         stats: {
           diagrams: parsed.diagrams.length,
           elements: parsed.diagrams.reduce((s, d) => s + d.elements.length, 0),
@@ -194,6 +215,50 @@ tm7Router.post('/import', (req: Request, res: Response) => {
     }
   });
 });
+
+/**
+ * GET /api/tm7/references
+ * List all reference examples.
+ */
+tm7Router.get('/references', asyncHandler(async (_req: Request, res: Response) => {
+  const refs = await prisma.referenceExample.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      sourceFile: true,
+      avgRating: true,
+      usageCount: true,
+      createdAt: true,
+    },
+  });
+  res.json(refs);
+}));
+
+/**
+ * DELETE /api/tm7/references/:id
+ * Remove a reference example.
+ */
+tm7Router.delete('/references/:id', asyncHandler(async (req: Request, res: Response) => {
+  await prisma.referenceExample.delete({ where: { id: req.params.id as string } });
+  res.status(204).end();
+}));
+
+/**
+ * POST /api/tm7/feedback
+ * Submit feedback for an AI generation.
+ * Body: { generationId, rating (1-5), comment? }
+ */
+tm7Router.post('/feedback', asyncHandler(async (req: Request, res: Response) => {
+  const { generationId, rating, comment } = req.body;
+  if (!generationId || !rating) {
+    res.status(400).json({ error: 'generationId and rating are required' });
+    return;
+  }
+  await submitAIFeedback(generationId, rating, comment);
+  res.json({ message: 'Feedback submitted' });
+}));
 
 // ─── Mapping helpers ────────────────────────────────────
 

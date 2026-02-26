@@ -89,12 +89,13 @@ model ThreatModel {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  diagrams     Diagram[]
-  threats      Threat[]
-  chatMessages ChatMessage[]
-  reviews      Review[]
-  members      ThreatModelMember[]
-  shareLinks   ShareLink[]
+  diagrams       Diagram[]
+  threats        Threat[]
+  chatMessages   ChatMessage[]
+  reviews        Review[]
+  members        ThreatModelMember[]
+  shareLinks     ShareLink[]
+  aiGenerations  AIGeneration[]
 
   @@map("threat_models")
 }
@@ -274,4 +275,56 @@ model CodeEmbedding {
 
   @@index([threatModelId])
   @@map("code_embeddings")
+}
+
+// ==================== AI Reference & Feedback ====================
+
+model ReferenceExample {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  /// Parsed .tm7 content as JSON (diagrams, elements, flows, threats)
+  parsedData  Json
+  /// Source file name (e.g., "Intune App for Linux.tm7")
+  sourceFile  String?
+  /// Average quality rating from feedback (null = no ratings yet)
+  avgRating   Float?
+  /// Number of times used in AI prompts
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("reference_examples")
+}
+
+model AIGeneration {
+  id             String   @id @default(uuid())
+  threatModelId  String
+  /// The raw AI output (diagrams + threats JSON)
+  aiOutput       Json
+  /// The prompt context used (summary, reference examples included)
+  promptContext  Json?
+  /// User's corrected version after edits (null = no edits)
+  correctedData  Json?
+  createdAt      DateTime @default(now())
+
+  feedback       AIFeedback?
+  threatModel    ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@index([threatModelId])
+  @@map("ai_generations")
+}
+
+model AIFeedback {
+  id             String   @id @default(uuid())
+  generationId   String   @unique
+  /// Quality rating 1-5
+  rating         Int
+  /// Optional freeform comment
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  generation     AIGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_feedback")
 }

@@ -48,7 +48,7 @@ export async function analyzeCodebase(
 
   // Step 2: Generate DFDs (one per scenario)
   console.log('Step 2: Generating DFDs...');
-  const dfd = await generateDfd(client, summaries, files);
+  const dfd = await generateDfd(client, summaries, files, threatModelId);
 
   // Step 3: Save diagrams, components, and data flows to database
   console.log('Step 3: Saving to database...');

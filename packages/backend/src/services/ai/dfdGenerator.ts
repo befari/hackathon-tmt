@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import { getBestReferenceExamples, formatFewShotPrompt, recordAIGeneration } from './referenceStore.js';
 
 interface DfdComponent {
   tempId: string;
@@ -33,10 +34,21 @@ export interface DfdResult {
 export async function generateDfd(
   client: OpenAI,
   codebaseSummary: string,
-  files: { path: string; content: string }[]
+  files: { path: string; content: string }[],
+  threatModelId?: string
 ): Promise<DfdResult> {
   // Build a file tree for context
   const fileTree = files.map((f) => f.path).join('\n');
+
+  // Load reference examples for few-shot prompting
+  let fewShotSection = '';
+  let refsUsed: any[] = [];
+  try {
+    refsUsed = await getBestReferenceExamples(2);
+    fewShotSection = formatFewShotPrompt(refsUsed);
+  } catch (err) {
+    console.warn('Could not load reference examples:', err);
+  }
 
   const response = await client.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
@@ -97,7 +109,7 @@ ARCHITECTURAL SUMMARY:
 ${codebaseSummary}
 
 FILE TREE:
-${fileTree}`,
+${fileTree}${fewShotSection}`,
       },
     ],
     temperature: 0.2,
@@ -130,6 +142,21 @@ ${fileTree}`,
         if (!validTypes.has(comp.type)) {
           comp.type = 'PROCESS';
         }
+      }
+    }
+
+    // Track this generation for feedback
+    if (threatModelId) {
+      try {
+        const genId = await recordAIGeneration(threatModelId, parsed, {
+          referenceExamples: refsUsed.map((r: any) => r.id),
+          codebaseSummaryLength: codebaseSummary.length,
+          fileCount: files.length,
+        });
+        // Attach generation ID to result for frontend feedback
+        (parsed as any)._generationId = genId;
+      } catch (err) {
+        console.warn('Could not record AI generation:', err);
       }
     }
 

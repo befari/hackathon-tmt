@@ -125,9 +125,12 @@ export const api = {
     request<any>(`/threat-models/${modelId}/share-links/${linkId}`, { method: 'DELETE' }),
 
   // TM7 Import
-  importTm7: async (file: File): Promise<any> => {
+  importTm7: async (file: File, contributeAsReference = false): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
+    if (contributeAsReference) {
+      formData.append('contributeAsReference', 'true');
+    }
     const headers: Record<string, string> = {};
     if (tokenProvider) {
       const token = await tokenProvider();
@@ -144,4 +147,14 @@ export const api = {
     }
     return res.json();
   },
+
+  // AI Feedback
+  submitFeedback: (generationId: string, rating: number, comment?: string) =>
+    request<any>('/tm7/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ generationId, rating, comment }),
+    }),
+  listReferences: () => request<any>('/tm7/references'),
+  deleteReference: (id: string) =>
+    request<any>(`/tm7/references/${id}`, { method: 'DELETE' }),
 };

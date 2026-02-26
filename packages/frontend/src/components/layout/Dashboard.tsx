@@ -17,6 +17,7 @@ import {
   DialogContent,
   Input,
   Textarea,
+  Checkbox,
 } from '@fluentui/react-components';
 import { Add20Regular, Shield20Regular, ArrowUpload20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
@@ -70,6 +71,9 @@ export function Dashboard() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [importing, setImporting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [contributeAsRef, setContributeAsRef] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,16 +100,24 @@ export function Dashboard() {
   const handleImportTm7 = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportFile(file);
+    setImportDialogOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importFile) return;
     setImporting(true);
     try {
-      const result = await api.importTm7(file);
+      const result = await api.importTm7(importFile, contributeAsRef);
+      setImportDialogOpen(false);
+      setImportFile(null);
       navigate(`/model/${result.threatModel.id}`);
     } catch (err: any) {
       console.error('Import failed:', err);
       alert(`Import failed: ${err.message}`);
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -212,6 +224,37 @@ export function Dashboard() {
           ))}
         </div>
       )}
+
+      <Dialog open={importDialogOpen} onOpenChange={(_e, data) => { if (!data.open) { setImportDialogOpen(false); setImportFile(null); } }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Import .tm7 File</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <Text>
+                  Importing <Text weight="semibold">{importFile?.name}</Text> will create a new threat model with all diagrams, components, data flows, and threats.
+                </Text>
+                <Checkbox
+                  checked={contributeAsRef}
+                  onChange={(_e, data) => setContributeAsRef(!!data.checked)}
+                  label="Use as AI reference example (helps improve future DFD generation)"
+                />
+                <Text size={200} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                  If enabled, the structure of this threat model will be used as a few-shot example when the AI generates new DFDs.
+                </Text>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => { setImportDialogOpen(false); setImportFile(null); }}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleConfirmImport} disabled={importing}>
+                {importing ? 'Importing…' : 'Import'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }
