@@ -26,6 +26,7 @@ import {
   SettingsRegular,
   HardDriveRegular,
   DividerTallRegular,
+  NoteRegular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -125,6 +126,7 @@ const PALETTE_CATEGORIES: PaletteCategory[] = [
       { subtype: 'webservice', label: 'Web Service', icon: <GlobeRegular fontSize={14} /> },
       { subtype: 'browser', label: 'Browser', icon: <WindowRegular fontSize={14} /> },
       { subtype: 'thirdparty', label: 'Third-party Service', icon: <ServerRegular fontSize={14} /> },
+      { subtype: 'annotation', label: 'Text Annotation', icon: <NoteRegular fontSize={14} />, nodeType: 'textAnnotation' },
     ],
   },
   {

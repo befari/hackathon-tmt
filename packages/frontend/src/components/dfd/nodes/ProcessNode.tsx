@@ -1,15 +1,17 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   wrapper: {
     position: 'relative' as const,
+    width: '100%',
+    height: '100%',
   },
   node: {
     padding: '12px 20px',
     borderRadius: '50%',
-    width: '120px',
-    height: '120px',
+    width: '100%',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -29,12 +31,14 @@ const useStyles = makeStyles({
   },
 });
 
-export function ProcessNode({ data }: NodeProps) {
+export function ProcessNode({ data, selected }: NodeProps) {
   const styles = useStyles();
   const commentCount = (data as any).commentCount || 0;
 
   return (
     <>
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={60}
+        handleStyle={{ backgroundColor: tokens.colorBrandStroke1, width: 7, height: 7 }} />
       <Handle type="source" position={Position.Top} id="top-src" />
       <Handle type="target" position={Position.Top} id="top-tgt" />
       <Handle type="source" position={Position.Left} id="left-src" />

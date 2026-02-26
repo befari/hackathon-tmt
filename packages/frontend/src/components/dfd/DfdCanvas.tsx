@@ -51,6 +51,7 @@ import { DataStoreNode } from './nodes/DataStoreNode';
 import { ExternalEntityNode } from './nodes/ExternalEntityNode';
 import { TrustBoundaryNode } from './nodes/TrustBoundaryNode';
 import { TrustBoundaryLineNode } from './nodes/TrustBoundaryLineNode';
+import { TextAnnotationNode } from './nodes/TextAnnotationNode';
 import { ComponentPalette } from './ComponentPalette';
 import { PropertyPanel } from './PropertyPanel';
 import { AIRatingWidget } from './AIRatingWidget';
@@ -64,6 +65,7 @@ const nodeTypes = {
   externalEntity: ExternalEntityNode,
   trustBoundary: TrustBoundaryNode,
   trustBoundaryLine: TrustBoundaryLineNode,
+  textAnnotation: TextAnnotationNode,
 };
 
 const useStyles = makeStyles({
@@ -167,18 +169,31 @@ function diagramToNodesAndEdges(
     const isBoundary = comp.type === 'TRUST_BOUNDARY';
     const meta = (comp as any).metadata || {};
     const isLineBoundary = meta.boundaryStyle === 'line';
-    const nodeType = isBoundary && isLineBoundary
-      ? 'trustBoundaryLine'
-      : componentTypeToNodeType(comp.type);
+    // Detect text annotations: External Entities with long names (>100 chars) or marked as annotation
+    const isAnnotation = meta.isAnnotation || (comp.type === 'EXTERNAL_ENTITY' && comp.name.length > 100);
+
+    let nodeType: string;
+    if (isAnnotation) {
+      nodeType = 'textAnnotation';
+    } else if (isBoundary && isLineBoundary) {
+      nodeType = 'trustBoundaryLine';
+    } else {
+      nodeType = componentTypeToNodeType(comp.type);
+    }
+
+    // Apply stored width/height to all nodes that have metadata
+    const nodeStyle: Record<string, any> = {};
+    if (meta.width && meta.height) {
+      nodeStyle.width = meta.width;
+      nodeStyle.height = meta.height;
+    }
+
     return {
       id: comp.id,
       type: nodeType,
       position: { x: comp.positionX, y: comp.positionY },
-      zIndex: isBoundary ? -1 : 1,
-      ...(isBoundary && !isLineBoundary && meta.width ? {
-        style: { width: meta.width, height: meta.height },
-        resizing: true,
-      } : {}),
+      zIndex: isBoundary ? -1 : (isAnnotation ? -1 : 1),
+      ...(Object.keys(nodeStyle).length > 0 ? { style: nodeStyle } : {}),
       data: {
         label: comp.name,
         description: comp.description,

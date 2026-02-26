@@ -1,9 +1,11 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   wrapper: {
     position: 'relative' as const,
+    width: '100%',
+    height: '100%',
   },
   node: {
     padding: '12px 20px',
@@ -15,8 +17,10 @@ const useStyles = makeStyles({
     border: `2px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: tokens.borderRadiusMedium,
     color: tokens.colorNeutralForeground1,
-    minWidth: '120px',
-    minHeight: '60px',
+    width: '100%',
+    height: '100%',
+    minWidth: '80px',
+    minHeight: '40px',
     cursor: 'pointer',
     '&:hover': {
       boxShadow: tokens.shadow8,
@@ -29,12 +33,14 @@ const useStyles = makeStyles({
   },
 });
 
-export function ExternalEntityNode({ data }: NodeProps) {
+export function ExternalEntityNode({ data, selected }: NodeProps) {
   const styles = useStyles();
   const commentCount = (data as any).commentCount || 0;
 
   return (
     <>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={40}
+        handleStyle={{ backgroundColor: tokens.colorNeutralStroke1, width: 7, height: 7 }} />
       <Handle type="source" position={Position.Top} id="top-src" />
       <Handle type="target" position={Position.Top} id="top-tgt" />
       <Handle type="source" position={Position.Left} id="left-src" />
