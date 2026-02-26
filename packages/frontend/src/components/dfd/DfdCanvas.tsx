@@ -218,11 +218,21 @@ function diagramToNodesAndEdges(
       nodeStyle.height = meta.height;
     }
 
+    // Smaller boundaries get higher zIndex so nested ones are clickable
+    let zIndex = 1;
+    if (isBoundary) {
+      const area = (meta.width || 200) * (meta.height || 100);
+      // Invert: smaller area → higher (less negative) zIndex, range roughly -100 to -1
+      zIndex = -Math.max(1, Math.min(100, Math.round(area / 5000)));
+    } else if (isAnnotation) {
+      zIndex = -1;
+    }
+
     return {
       id: comp.id,
       type: nodeType,
       position: { x: comp.positionX, y: comp.positionY },
-      zIndex: isBoundary ? -1 : (isAnnotation ? -1 : 1),
+      zIndex,
       ...(Object.keys(nodeStyle).length > 0 ? { style: nodeStyle } : {}),
       data: {
         label: comp.name,

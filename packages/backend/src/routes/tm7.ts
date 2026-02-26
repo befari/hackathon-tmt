@@ -92,6 +92,7 @@ tm7Router.post('/import', (req: Request, res: Response) => {
         // Track old GUID → new DB ID for flow source/target and threat linking
         const guidToComponentId = new Map<string, string>();
         const guidToDiagramId = new Map<string, string>();
+        const guidToDataFlowId = new Map<string, string>();
 
         for (let i = 0; i < parsed.diagrams.length; i++) {
           const d = parsed.diagrams[i];
@@ -139,7 +140,7 @@ tm7Router.post('/import', (req: Request, res: Response) => {
             // (e.g., trust boundary-to-boundary flows)
             if (!sourceId || !targetId) continue;
 
-            await tx.dataFlow.create({
+            const dataFlow = await tx.dataFlow.create({
               data: {
                 label: flow.label || 'Data Flow',
                 protocol: flow.properties['Protocol'] || '',
@@ -154,13 +155,13 @@ tm7Router.post('/import', (req: Request, res: Response) => {
                 },
               },
             });
+            guidToDataFlowId.set(flow.guid, dataFlow.id);
           }
         }
 
-        // 3. Create threats
+        // 3. Create threats (linked to flows, not elements — TMT links threats to data flows)
         for (const threat of parsed.threats) {
-          const componentId = guidToComponentId.get(threat.sourceGuid) || null;
-          const diagramGuid = threat.diagramGuid;
+          const dataFlowId = guidToDataFlowId.get(threat.flowGuid) || null;
 
           await tx.threat.create({
             data: {
@@ -173,7 +174,7 @@ tm7Router.post('/import', (req: Request, res: Response) => {
               aiGenerated: false,
               confidence: null,
               threatModelId: threatModel.id,
-              componentId,
+              dataFlowId,
             },
           });
         }

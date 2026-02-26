@@ -20,10 +20,6 @@ const useStyles = makeStyles({
     height: '100%',
     minWidth: '200px',
     minHeight: '100px',
-    pointerEvents: 'none' as const,
-  },
-  label: {
-    pointerEvents: 'auto' as const,
     cursor: 'pointer',
   },
   badge: {
@@ -52,7 +48,7 @@ export function TrustBoundaryNode({ data, selected }: NodeProps) {
       <Handle type="target" position={Position.Left} id="left-tgt" />
       <div className={styles.wrapper}>
         <div className={styles.node}>
-          <Text size={200} weight="semibold" className={styles.label}>
+          <Text size={200} weight="semibold">
             {(data as any).label}
           </Text>
         </div>
