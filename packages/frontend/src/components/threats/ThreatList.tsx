@@ -165,6 +165,10 @@ export function ThreatList() {
   const [generating, setGenerating] = useState(false);
   const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
   const [deleteThreatTarget, setDeleteThreatTarget] = useState<{ id: string; title: string } | null>(null);
+  const [sortBy, setSortBy] = useState<string>('number');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
@@ -340,9 +344,39 @@ export function ThreatList() {
   ).map(([did, dname]) => ({ id: did, name: dname }));
 
   // Filter threats by diagram if filter is set
-  const filteredThreats = diagramFilter
+  const filteredThreats = (diagramFilter
     ? threats.filter((t: any) => t.dataFlow?.diagram?.id === diagramFilter)
-    : threats;
+    : threats
+  ).slice().sort((a: any, b: any) => {
+    let cmp = 0;
+    switch (sortBy) {
+      case 'number': cmp = (a.number || 0) - (b.number || 0); break;
+      case 'severity': {
+        const order: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, INFO: 4 };
+        cmp = (order[a.severity] ?? 5) - (order[b.severity] ?? 5); break;
+      }
+      case 'status': cmp = a.status.localeCompare(b.status); break;
+      case 'category': cmp = a.strideCategory.localeCompare(b.strideCategory); break;
+      default: cmp = 0;
+    }
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) return;
+    await fetch(`/api/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: editCommentText }),
+    });
+    setEditingCommentId(null);
+    setEditCommentText('');
+    if (expandedThreat) {
+      const res = await fetch(`/api/comments?threatId=${expandedThreat}`);
+      const { data } = await res.json();
+      setThreatComments((prev) => ({ ...prev, [expandedThreat]: data || [] }));
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -386,6 +420,25 @@ export function ThreatList() {
               ))}
             </Dropdown>
           )}
+          <Dropdown
+            placeholder="Sort by"
+            value={`${sortBy === 'number' ? '#' : sortBy === 'severity' ? 'Severity' : sortBy === 'status' ? 'Status' : 'Category'} ${sortDir === 'asc' ? '↑' : '↓'}`}
+            onOptionSelect={(_e, d) => {
+              const val = d.optionValue as string;
+              if (val === sortBy) {
+                setSortDir((prev) => prev === 'asc' ? 'desc' : 'asc');
+              } else {
+                setSortBy(val);
+                setSortDir('asc');
+              }
+            }}
+            style={{ minWidth: '130px' }}
+          >
+            <Option value="number"># Number</Option>
+            <Option value="severity">Severity</Option>
+            <Option value="status">Status</Option>
+            <Option value="category">STRIDE Category</Option>
+          </Dropdown>
           <Tooltip content="Auto-generate STRIDE threats using AI" relationship="description">
             <Button
               appearance="subtle"
@@ -676,17 +729,69 @@ export function ThreatList() {
                           <Text size={100} weight="semibold">{comment.author}</Text>
                           <Text size={100}>{new Date(comment.createdAt).toLocaleString()}</Text>
                           {comment.resolved && <Badge appearance="outline" color="success" size="small">Resolved</Badge>}
+                          {editingCommentId !== comment.id && (
+                            <Tooltip content="Edit comment" relationship="label">
+                              <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                                aria-label="Edit comment"
+                                style={{ minWidth: 'auto', padding: '2px' }}
+                                onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.body); }}
+                              />
+                            </Tooltip>
+                          )}
                         </div>
                         <div className={styles.commentBody}>
-                          <Text size={200}>{comment.body}</Text>
+                          {editingCommentId === comment.id ? (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                              <Textarea
+                                value={editCommentText}
+                                onChange={(_e, d) => setEditCommentText(d.value)}
+                                style={{ flex: 1 }}
+                                rows={2}
+                                aria-label="Edit comment"
+                                autoFocus
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <Button size="small" appearance="primary" onClick={() => handleEditComment(comment.id)} disabled={!editCommentText.trim()}>Save</Button>
+                                <Button size="small" appearance="secondary" onClick={() => setEditingCommentId(null)}>Cancel</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Text size={200}>{comment.body}</Text>
+                          )}
                         </div>
-                        {comment.replies?.map((reply) => (
+                        {comment.replies?.map((reply: any) => (
                           <div key={reply.id} className={styles.reply}>
                             <div className={styles.commentMeta}>
                               <Text size={100} weight="semibold">{reply.author}</Text>
                               <Text size={100}>{new Date(reply.createdAt).toLocaleString()}</Text>
+                              {editingCommentId !== reply.id && (
+                                <Tooltip content="Edit reply" relationship="label">
+                                  <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                                    aria-label="Edit reply"
+                                    style={{ minWidth: 'auto', padding: '2px' }}
+                                    onClick={() => { setEditingCommentId(reply.id); setEditCommentText(reply.body); }}
+                                  />
+                                </Tooltip>
+                              )}
                             </div>
-                            <Text size={200}>{reply.body}</Text>
+                            {editingCommentId === reply.id ? (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '4px' }}>
+                                <Textarea
+                                  value={editCommentText}
+                                  onChange={(_e, d) => setEditCommentText(d.value)}
+                                  style={{ flex: 1 }}
+                                  rows={2}
+                                  aria-label="Edit reply"
+                                  autoFocus
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <Button size="small" appearance="primary" onClick={() => handleEditComment(reply.id)} disabled={!editCommentText.trim()}>Save</Button>
+                                  <Button size="small" appearance="secondary" onClick={() => setEditingCommentId(null)}>Cancel</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Text size={200}>{reply.body}</Text>
+                            )}
                           </div>
                         ))}
                       </div>

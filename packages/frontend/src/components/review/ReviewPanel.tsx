@@ -133,6 +133,8 @@ export function ReviewPanel() {
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editReviewName, setEditReviewName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
 
   // New comment form
   const [newCommentBody, setNewCommentBody] = useState('');
@@ -204,6 +206,18 @@ export function ReviewPanel() {
 
   const handleResolve = async (commentId: string) => {
     await api.resolveComment(commentId);
+    if (selectedReview) loadReviewComments(selectedReview.id);
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) return;
+    await fetch(`/api/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: editCommentText }),
+    });
+    setEditingCommentId(null);
+    setEditCommentText('');
     if (selectedReview) loadReviewComments(selectedReview.id);
   };
 
@@ -516,6 +530,15 @@ export function ReviewPanel() {
                       Resolved
                     </Badge>
                   )}
+                  {editingCommentId !== comment.id && (
+                    <Tooltip content="Edit comment" relationship="label">
+                      <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                        aria-label="Edit comment"
+                        style={{ minWidth: 'auto', padding: '2px' }}
+                        onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.body); }}
+                      />
+                    </Tooltip>
+                  )}
                 </div>
                 {getLinkLabel(comment) && (
                   <div className={styles.commentLink}>
@@ -525,7 +548,24 @@ export function ReviewPanel() {
                   </div>
                 )}
                 <div className={styles.commentBody}>
-                  <Text>{comment.body}</Text>
+                  {editingCommentId === comment.id ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <Textarea
+                        value={editCommentText}
+                        onChange={(_e, d) => setEditCommentText(d.value)}
+                        style={{ flex: 1 }}
+                        rows={3}
+                        aria-label="Edit comment"
+                        autoFocus
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <Button size="small" appearance="primary" onClick={() => handleEditComment(comment.id)} disabled={!editCommentText.trim()}>Save</Button>
+                        <Button size="small" appearance="secondary" onClick={() => setEditingCommentId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Text>{comment.body}</Text>
+                  )}
                 </div>
 
                 {/* Replies */}
@@ -538,9 +578,35 @@ export function ReviewPanel() {
                       <Text size={100}>
                         {new Date(reply.createdAt).toLocaleString()}
                       </Text>
+                      {editingCommentId !== reply.id && (
+                        <Tooltip content="Edit reply" relationship="label">
+                          <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                            aria-label="Edit reply"
+                            style={{ minWidth: 'auto', padding: '2px' }}
+                            onClick={() => { setEditingCommentId(reply.id); setEditCommentText(reply.body); }}
+                          />
+                        </Tooltip>
+                      )}
                     </div>
                     <div className={styles.commentBody}>
-                      <Text>{reply.body}</Text>
+                      {editingCommentId === reply.id ? (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <Textarea
+                            value={editCommentText}
+                            onChange={(_e, d) => setEditCommentText(d.value)}
+                            style={{ flex: 1 }}
+                            rows={2}
+                            aria-label="Edit reply"
+                            autoFocus
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <Button size="small" appearance="primary" onClick={() => handleEditComment(reply.id)} disabled={!editCommentText.trim()}>Save</Button>
+                            <Button size="small" appearance="secondary" onClick={() => setEditingCommentId(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Text>{reply.body}</Text>
+                      )}
                     </div>
                   </div>
                 ))}
