@@ -426,7 +426,7 @@ export async function chatWithContext(
 ): Promise<string> {
   const client = getOpenAIClient();
 
-  // Get threat model with diagrams and threats
+  // Get threat model with diagrams, threats, comments, and reviews
   const model = await prisma.threatModel.findUnique({
     where: { id: threatModelId },
     select: {
@@ -441,25 +441,79 @@ export async function chatWithContext(
       },
       threats: {
         orderBy: { number: 'asc' },
-        select: { id: true, number: true, title: true, description: true, strideCategory: true, severity: true, status: true, mitigationNotes: true, componentId: true, dataFlowId: true },
+        select: {
+          id: true, number: true, title: true, description: true, strideCategory: true,
+          severity: true, status: true, mitigationNotes: true, componentId: true, dataFlowId: true,
+          comments: {
+            where: { parentId: null },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true, author: true, body: true, createdAt: true,
+              replies: { select: { author: true, body: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
+            },
+          },
+        },
+      },
+      reviews: {
+        orderBy: { startedAt: 'desc' },
+        select: {
+          id: true, name: true, status: true, startedAt: true,
+          comments: {
+            where: { parentId: null },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              author: true, body: true, createdAt: true,
+              threat: { select: { number: true, title: true } },
+              replies: { select: { author: true, body: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
+            },
+          },
+        },
       },
     },
   });
 
-  // Build threat summary (always included)
-  const threatSummary = (model?.threats || []).map((t) =>
-    `T-${t.number}: ${t.title} [${t.strideCategory}/${t.severity}/${t.status}]`
-  ).join('\n');
+  // Build threat summary with comments (always included)
+  const threatSummary = (model?.threats || []).map((t: any) => {
+    let line = `T-${t.number}: ${t.title} [${t.strideCategory}/${t.severity}/${t.status}]`;
+    if (t.comments?.length) {
+      const commentLines = t.comments.map((c: any) => {
+        let thread = `    💬 ${c.author}: ${c.body}`;
+        if (c.replies?.length) {
+          thread += c.replies.map((r: any) => `\n      ↳ ${r.author}: ${r.body}`).join('');
+        }
+        return thread;
+      }).join('\n');
+      line += `\n  Comments:\n${commentLines}`;
+    }
+    return line;
+  }).join('\n');
 
   // Build DFD summary (always included)
-  const dfdSummary = (model?.diagrams || []).map((d) => {
-    const comps = d.components.map((c) => `  - ${c.type}: ${c.name}`).join('\n');
-    const flows = d.dataFlows.map((f) => {
-      const src = d.components.find((c) => c.id === f.sourceId)?.name || f.sourceId;
-      const tgt = d.components.find((c) => c.id === f.targetId)?.name || f.targetId;
+  const dfdSummary = (model?.diagrams || []).map((d: any) => {
+    const comps = d.components.map((c: any) => `  - ${c.type}: ${c.name}`).join('\n');
+    const flows = d.dataFlows.map((f: any) => {
+      const src = d.components.find((c: any) => c.id === f.sourceId)?.name || f.sourceId;
+      const tgt = d.components.find((c: any) => c.id === f.targetId)?.name || f.targetId;
       return `  - ${src} → ${tgt} (${f.label}${f.protocol ? ', ' + f.protocol : ''})`;
     }).join('\n');
     return `Diagram: ${d.name}\nComponents:\n${comps || '  (none)'}\nData Flows:\n${flows || '  (none)'}`;
+  }).join('\n\n');
+
+  // Build security review summary (always included)
+  const reviewSummary = (model?.reviews || []).map((r: any) => {
+    let line = `Review: "${r.name}" [${r.status}] (${new Date(r.startedAt).toLocaleDateString()})`;
+    if (r.comments?.length) {
+      const commentLines = r.comments.map((c: any) => {
+        const threatRef = c.threat ? ` (re: T-${c.threat.number}: ${c.threat.title})` : '';
+        let thread = `    💬 ${c.author}${threatRef}: ${c.body}`;
+        if (c.replies?.length) {
+          thread += c.replies.map((rep: any) => `\n      ↳ ${rep.author}: ${rep.body}`).join('');
+        }
+        return thread;
+      }).join('\n');
+      line += `\n  Comments:\n${commentLines}`;
+    }
+    return line;
   }).join('\n\n');
 
   // Build detailed context for @-mentioned items
@@ -503,6 +557,9 @@ ${threatSummary || '(No threats identified yet)'}
 
 DFD ARCHITECTURE:
 ${dfdSummary || '(No diagrams yet)'}
+
+SECURITY REVIEWS:
+${reviewSummary || '(No reviews yet)'}
 ${mentionContext}
 
 When the user references threats by number (e.g. T-1, T-2), use the threat inventory above to identify the correct threat. Help the user understand the architecture, threats, and security posture. Be specific and reference actual components and data flows when possible. If you don't know something, say so rather than guessing.
