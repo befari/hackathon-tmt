@@ -1,7 +1,6 @@
 import { NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
 import { useTakeSnapshot } from '../UndoRedoContext';
-import { NodeHandles } from './NodeHandles';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -52,7 +51,6 @@ export function TrustBoundaryNode({ data, selected }: NodeProps) {
         lineStyle={{ borderColor: tokens.colorPaletteRedBorder1 }}
         handleStyle={{ backgroundColor: tokens.colorPaletteRedBorder1, width: 8, height: 8 }}
       />
-      <NodeHandles />
       <div className={styles.wrapper}>
         <div className={styles.node}>
           <Text size={200} weight="semibold" className={styles.label} style={{ wordBreak: 'break-word', lineHeight: '1.2', overflow: 'hidden' }}>

@@ -1,10 +1,10 @@
 import { Handle, Position } from '@xyflow/react';
 
 const handleStyle = {
-  width: 8,
-  height: 8,
-  background: '#4a9eff',
-  border: '2px solid #2d2d2d',
+  width: 7,
+  height: 7,
+  background: '#6c757d',
+  border: '1.5px solid #888',
   borderRadius: '50%',
 };
 

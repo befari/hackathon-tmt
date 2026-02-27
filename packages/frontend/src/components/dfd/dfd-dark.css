@@ -50,9 +50,17 @@
 .react-flow__node-trustBoundary.selected {
   z-index: -50 !important;
 }
-.react-flow__node-trustBoundary .react-flow__handle {
-  pointer-events: auto !important;
-}
 .react-flow__node-trustBoundary .react-flow__resize-control {
   pointer-events: auto !important;
+}
+
+/* Tighter edge-to-handle connection (reduce gap) */
+.react-flow__handle {
+  opacity: 0.6;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.react-flow__handle:hover,
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1;
+  transform: scale(1.3);
 }
