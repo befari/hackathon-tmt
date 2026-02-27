@@ -27,6 +27,7 @@ import {
 import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
 import { api } from '../../api/client';
+import { useToast } from '../shared/ToastContext';
 
 const useStyles = makeStyles({
   page: {
@@ -71,6 +72,7 @@ const useStyles = makeStyles({
 export function Dashboard() {
   const styles = useStyles();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [models, setModels] = useState<(ThreatModel & { _count?: Record<string, number> })[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -118,7 +120,7 @@ export function Dashboard() {
       navigate(`/model/${result.threatModel.id}`);
     } catch (err: any) {
       console.error('Import failed:', err);
-      alert(`Import failed: ${err.message}`);
+      showToast(`Import failed: ${err.message}`, 'error');
     } finally {
       setImporting(false);
     }

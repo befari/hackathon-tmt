@@ -569,10 +569,19 @@ ${JSON.stringify(dfdDescription, null, 2)}`,
     created++;
   }
 
+  // Record the AI generation for feedback tracking
+  const { recordAIGeneration } = await import('../services/ai/referenceStore.js');
+  const generation = await recordAIGeneration(tmId, parsed, {
+    type: 'threat-generation',
+    dfdDescription,
+    threatsGenerated: created,
+  });
+
   res.json({
     data: {
       threatsGenerated: created,
       message: `Generated ${created} STRIDE threats`,
+      generationId: generation.id,
     },
   });
 }));

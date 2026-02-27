@@ -34,6 +34,8 @@ import {
   Delete20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
+import { useToast } from '../shared/ToastContext';
+import { AIRatingWidget } from '../dfd/AIRatingWidget';
 import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
 
 const useStyles = makeStyles({
@@ -145,6 +147,7 @@ const strideLabels: Record<string, string> = {
 export function ThreatList() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
+  const { showToast } = useToast();
   const [threats, setThreats] = useState<Threat[]>([]);
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>('');
@@ -160,6 +163,7 @@ export function ThreatList() {
   const [editOpen, setEditOpen] = useState(false);
   const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
@@ -215,10 +219,11 @@ export function ThreatList() {
     try {
       const { data } = await api.generateThreats(id) as any;
       loadThreats();
-      alert(`✅ ${data.message}`);
+      showToast(data.message, 'success');
+      if (data.generationId) setAiGenerationId(data.generationId);
     } catch (err: any) {
       const msg = err?.message || 'Failed to generate threats';
-      alert(`❌ ${msg}`);
+      showToast(msg, 'error');
     } finally {
       setGenerating(false);
     }
@@ -709,6 +714,12 @@ export function ThreatList() {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+      {aiGenerationId && (
+        <AIRatingWidget
+          generationId={aiGenerationId}
+          onClose={() => setAiGenerationId(null)}
+        />
+      )}
     </div>
   );
 }
