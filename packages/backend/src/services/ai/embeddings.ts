@@ -47,19 +47,76 @@ export async function findRelevantCode(
 export async function chatWithContext(
   threatModelId: string,
   userMessage: string,
-  chatHistory: { role: string; content: string }[]
+  chatHistory: { role: string; content: string }[],
+  mentions?: { type: string; id: string }[]
 ): Promise<string> {
   const client = getOpenAIClient();
 
-  // Get relevant context
-  const context = await findRelevantCode(threatModelId, userMessage);
-  const contextText = context.map((c) => c.content).join('\n\n');
-
-  // Get threat model info
+  // Get threat model with diagrams and threats
   const model = await prisma.threatModel.findUnique({
     where: { id: threatModelId },
-    select: { name: true, description: true },
+    select: {
+      name: true,
+      description: true,
+      diagrams: {
+        orderBy: { order: 'asc' },
+        include: {
+          components: { select: { id: true, name: true, type: true, description: true } },
+          dataFlows: { select: { id: true, label: true, protocol: true, dataClassification: true, crossesTrustBoundary: true, sourceId: true, targetId: true } },
+        },
+      },
+      threats: {
+        orderBy: { number: 'asc' },
+        select: { id: true, number: true, title: true, description: true, strideCategory: true, severity: true, status: true, mitigationNotes: true, componentId: true, dataFlowId: true },
+      },
+    },
   });
+
+  // Build threat summary (always included)
+  const threatSummary = (model?.threats || []).map((t) =>
+    `T-${t.number}: ${t.title} [${t.strideCategory}/${t.severity}/${t.status}]`
+  ).join('\n');
+
+  // Build DFD summary (always included)
+  const dfdSummary = (model?.diagrams || []).map((d) => {
+    const comps = d.components.map((c) => `  - ${c.type}: ${c.name}`).join('\n');
+    const flows = d.dataFlows.map((f) => {
+      const src = d.components.find((c) => c.id === f.sourceId)?.name || f.sourceId;
+      const tgt = d.components.find((c) => c.id === f.targetId)?.name || f.targetId;
+      return `  - ${src} → ${tgt} (${f.label}${f.protocol ? ', ' + f.protocol : ''})`;
+    }).join('\n');
+    return `Diagram: ${d.name}\nComponents:\n${comps || '  (none)'}\nData Flows:\n${flows || '  (none)'}`;
+  }).join('\n\n');
+
+  // Build detailed context for @-mentioned items
+  let mentionContext = '';
+  if (mentions?.length) {
+    const mentionParts: string[] = [];
+    for (const m of mentions) {
+      if (m.type === 'threat') {
+        const t = (model?.threats || []).find((t) => t.id === m.id);
+        if (t) {
+          mentionParts.push(
+            `--- Mentioned Threat T-${t.number} ---\nTitle: ${t.title}\nCategory: ${t.strideCategory}\nSeverity: ${t.severity}\nStatus: ${t.status}\nDescription: ${t.description}\nMitigation: ${t.mitigationNotes || 'None documented'}`
+          );
+        }
+      } else if (m.type === 'diagram') {
+        const d = (model?.diagrams || []).find((d) => d.id === m.id);
+        if (d) {
+          const comps = d.components.map((c) => `  - ${c.type}: ${c.name}${c.description ? ' — ' + c.description : ''}`).join('\n');
+          const flows = d.dataFlows.map((f) => {
+            const src = d.components.find((c) => c.id === f.sourceId)?.name || f.sourceId;
+            const tgt = d.components.find((c) => c.id === f.targetId)?.name || f.targetId;
+            return `  - ${src} → ${tgt} (${f.label}, protocol: ${f.protocol || 'N/A'}, classification: ${f.dataClassification || 'N/A'}, crosses trust boundary: ${f.crossesTrustBoundary})`;
+          }).join('\n');
+          mentionParts.push(`--- Mentioned DFD: ${d.name} ---\nComponents:\n${comps}\nData Flows:\n${flows}`);
+        }
+      }
+    }
+    if (mentionParts.length) {
+      mentionContext = '\n\nThe user explicitly referenced the following items (pay special attention to these):\n\n' + mentionParts.join('\n\n');
+    }
+  }
 
   const messages: any[] = [
     {
@@ -67,13 +124,15 @@ export async function chatWithContext(
       content: `You are a security-focused AI assistant helping with threat modeling for "${model?.name || 'this system'}".
 ${model?.description ? `System description: ${model.description}` : ''}
 
-You have access to the following context about the system:
+THREAT INVENTORY:
+${threatSummary || '(No threats identified yet)'}
 
-${contextText}
+DFD ARCHITECTURE:
+${dfdSummary || '(No diagrams yet)'}
+${mentionContext}
 
-Help the user understand the architecture, threats, and security posture. Be specific and reference actual components and data flows when possible. If you don't know something, say so rather than guessing.`,
+When the user references threats by number (e.g. T-1, T-2), use the threat inventory above to identify the correct threat. Help the user understand the architecture, threats, and security posture. Be specific and reference actual components and data flows when possible. If you don't know something, say so rather than guessing.`,
     },
-    // Include recent chat history for context
     ...chatHistory.slice(-10).map((m) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,

@@ -7,6 +7,41 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
 
 export const chatRouter = Router();
 
+// Get mentionable items (threats + diagrams) for @ autocomplete
+chatRouter.get('/:threatModelId/mentions', asyncHandler(async (req: Request, res: Response) => {
+  const { threatModelId } = req.params as { threatModelId: string };
+
+  const [threats, diagrams] = await Promise.all([
+    prisma.threat.findMany({
+      where: { threatModelId },
+      select: { id: true, number: true, title: true, strideCategory: true, severity: true },
+      orderBy: { number: 'asc' },
+    }),
+    prisma.diagram.findMany({
+      where: { threatModelId },
+      select: { id: true, name: true },
+      orderBy: { order: 'asc' },
+    }),
+  ]);
+
+  res.json({
+    data: [
+      ...threats.map((t) => ({
+        type: 'threat' as const,
+        id: t.id,
+        label: `T-${t.number}: ${t.title}`,
+        detail: `${t.strideCategory} / ${t.severity}`,
+      })),
+      ...diagrams.map((d) => ({
+        type: 'diagram' as const,
+        id: d.id,
+        label: `DFD: ${d.name}`,
+        detail: 'Diagram',
+      })),
+    ],
+  });
+}));
+
 // Get chat history for a threat model
 chatRouter.get('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
   const messages = await prisma.chatMessage.findMany({
@@ -19,7 +54,7 @@ chatRouter.get('/:threatModelId', asyncHandler(async (req: Request, res: Respons
 
 // Send a message with AI response
 chatRouter.post('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
-  const { message } = req.body;
+  const { message, mentions } = req.body;
   const { threatModelId } = req.params as { threatModelId: string };
 
   // Save user message
@@ -43,7 +78,8 @@ chatRouter.post('/:threatModelId', asyncHandler(async (req: Request, res: Respon
     aiResponse = await chatWithContext(
       threatModelId,
       message,
-      history.map((m) => ({ role: m.role, content: m.content }))
+      history.map((m) => ({ role: m.role, content: m.content })),
+      mentions
     );
   } catch (err: any) {
     console.error('AI chat error:', err.message);
