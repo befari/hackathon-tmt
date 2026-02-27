@@ -633,10 +633,13 @@ export function DfdCanvas() {
           positionY,
           metadata,
         });
+        const isBoundary = componentType === 'TRUST_BOUNDARY';
+        const isAnnotation = nodeType === 'textAnnotation';
         const newNode: Node = {
           id: data.id,
           type: nodeType,
           position: { x: positionX, y: positionY },
+          zIndex: isBoundary ? -50 : isAnnotation ? -1 : 1,
           data: {
             label: data.name,
             description: data.description || '',
