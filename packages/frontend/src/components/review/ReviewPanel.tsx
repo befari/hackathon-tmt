@@ -232,7 +232,7 @@ export function ReviewPanel() {
   };
 
   const getLinkLabel = (comment: any): string | null => {
-    if (comment.threat) return `On threat: ${comment.threat.title}`;
+    if (comment.threat) return `On threat T-${comment.threat.number || '?'}: ${comment.threat.title}`;
     if (comment.component) return `On component: ${comment.component.name}`;
     if (comment.dataFlow) return `On data flow: ${comment.dataFlow.label}`;
     return null;
@@ -456,7 +456,7 @@ export function ReviewPanel() {
                   style={{ minWidth: '200px' }}
                 >
                   {threats.map((t) => (
-                    <Option key={t.id} value={t.id}>{t.title}</Option>
+                    <Option key={t.id} value={t.id} text={`T-${(t as any).number || '?'}: ${t.title}`}>T-{(t as any).number || '?'}: {t.title}</Option>
                   ))}
                 </Dropdown>
               )}

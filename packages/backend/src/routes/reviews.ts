@@ -32,7 +32,7 @@ reviewRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
         where: { parentId: null },
         include: {
           replies: { orderBy: { createdAt: 'asc' } },
-          threat: { select: { id: true, title: true } },
+          threat: { select: { id: true, number: true, title: true } },
           component: { select: { id: true, name: true } },
           dataFlow: { select: { id: true, label: true } },
         },

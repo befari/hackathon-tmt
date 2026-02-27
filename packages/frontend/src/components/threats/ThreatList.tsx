@@ -491,7 +491,10 @@ export function ThreatList() {
                         aria-label="Threat title"
                       />
                     ) : (
-                      <Text weight="semibold" size={400}>{threat.title}</Text>
+                      <Text weight="semibold" size={400}>
+                        <Text style={{ color: tokens.colorNeutralForeground3, marginRight: '8px' }}>T-{threat.number || '?'}</Text>
+                        {threat.title}
+                      </Text>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>

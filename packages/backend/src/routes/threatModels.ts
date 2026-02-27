@@ -551,9 +551,15 @@ ${JSON.stringify(dfdDescription, null, 2)}`,
 
   // Save threats to DB
   let created = 0;
+  const maxNum = await prisma.threat.aggregate({
+    where: { threatModelId: tmId },
+    _max: { number: true },
+  });
+  let nextNum = (maxNum._max.number || 0) + 1;
   for (const threat of threats) {
     await prisma.threat.create({
       data: {
+        number: nextNum++,
         title: threat.title,
         description: threat.description,
         strideCategory: threat.strideCategory,

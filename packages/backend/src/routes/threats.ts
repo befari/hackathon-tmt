@@ -6,12 +6,23 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
 
 export const threatRouter = Router();
 
+// Get next threat number for a threat model
+async function nextThreatNumber(threatModelId: string): Promise<number> {
+  const max = await prisma.threat.aggregate({
+    where: { threatModelId },
+    _max: { number: true },
+  });
+  return (max._max.number || 0) + 1;
+}
+
 // Create a threat
 threatRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { title, description, strideCategory, severity, threatModelId, componentId, dataFlowId, mitigationNotes } = req.body;
 
+  const number = await nextThreatNumber(threatModelId);
   const threat = await prisma.threat.create({
     data: {
+      number,
       title,
       description,
       strideCategory,

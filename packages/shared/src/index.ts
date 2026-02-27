@@ -98,6 +98,7 @@ export interface DataFlow {
 
 export interface Threat {
   id: string;
+  number: number;
   title: string;
   description: string;
   strideCategory: StrideCategory;

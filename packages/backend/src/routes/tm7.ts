@@ -160,11 +160,13 @@ tm7Router.post('/import', (req: Request, res: Response) => {
         }
 
         // 3. Create threats (linked to flows, not elements — TMT links threats to data flows)
+        let threatNum = 1;
         for (const threat of parsed.threats) {
           const dataFlowId = guidToDataFlowId.get(threat.flowGuid) || null;
 
           await tx.threat.create({
             data: {
+              number: threatNum++,
               title: threat.title,
               description: threat.description,
               strideCategory: mapStrideCategory(threat.category),
