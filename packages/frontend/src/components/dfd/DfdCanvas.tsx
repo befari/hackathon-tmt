@@ -194,13 +194,13 @@ function componentTypeToNodeType(type: string): string {
  * Maps TMT PortSource/PortTarget names to React Flow handle IDs.
  * TMT ports: East, West, North, South, NorthWest, SouthWest, NorthEast, SouthEast, Auto
  */
-function portToHandle(port: string, suffix: 'src' | 'tgt'): string | undefined {
+function portToHandle(port: string, _suffix: 'src' | 'tgt'): string | undefined {
   if (!port || port === 'Auto' || port === 'AutoFix') return undefined;
   const p = port.toLowerCase();
-  if (p.includes('east') && !p.includes('north') && !p.includes('south')) return `right-${suffix}`;
-  if (p.includes('west') && !p.includes('north') && !p.includes('south')) return `left-${suffix}`;
-  if (p.includes('north')) return `top-${suffix}`;
-  if (p.includes('south')) return `bottom-${suffix}`;
+  if (p.includes('east') && !p.includes('north') && !p.includes('south')) return 'r1';
+  if (p.includes('west') && !p.includes('north') && !p.includes('south')) return 'l1';
+  if (p.includes('north')) return 't1';
+  if (p.includes('south')) return 'b1';
   return undefined;
 }
 
@@ -285,8 +285,8 @@ function diagramToNodesAndEdges(
       type: 'bendable',
       source: flow.sourceId,
       target: flow.targetId,
-      ...(sourceHandle ? { sourceHandle } : {}),
-      ...(targetHandle ? { targetHandle } : {}),
+      sourceHandle: sourceHandle || 'r1',
+      targetHandle: targetHandle || 'l1',
       label: flow.label,
       animated: flow.crossesTrustBoundary,
       style: {
