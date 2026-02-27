@@ -164,6 +164,7 @@ export function ThreatList() {
   const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
+  const [deleteThreatTarget, setDeleteThreatTarget] = useState<{ id: string; title: string } | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
@@ -543,15 +544,7 @@ export function ThreatList() {
                     appearance="subtle"
                     style={{ color: tokens.colorPaletteRedForeground1 }}
                     icon={<Delete20Regular />}
-                    onClick={async () => {
-                      if (!confirm(`Delete threat "${threat.title}"?`)) return;
-                      try {
-                        await api.deleteThreat(threat.id);
-                        loadThreats();
-                      } catch (err) {
-                        console.error('Failed to delete threat:', err);
-                      }
-                    }}
+                    onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
                   >
                     Delete
                   </Button>
@@ -710,6 +703,38 @@ export function ThreatList() {
             <DialogActions>
               <Button appearance="secondary" onClick={() => { setEditOpen(false); setEditThreat(null); }}>Cancel</Button>
               <Button appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+      <Dialog
+        open={!!deleteThreatTarget}
+        onOpenChange={(_e, data) => { if (!data.open) setDeleteThreatTarget(null); }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Delete Threat</DialogTitle>
+            <DialogContent>
+              Are you sure you want to delete "{deleteThreatTarget?.title}"?
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setDeleteThreatTarget(null)}>Cancel</Button>
+              <Button
+                appearance="primary"
+                style={{ backgroundColor: tokens.colorPaletteRedBackground3 }}
+                onClick={async () => {
+                  if (!deleteThreatTarget) return;
+                  try {
+                    await api.deleteThreat(deleteThreatTarget.id);
+                    loadThreats();
+                  } catch (err) {
+                    console.error('Failed to delete threat:', err);
+                  }
+                  setDeleteThreatTarget(null);
+                }}
+              >
+                Delete
+              </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
