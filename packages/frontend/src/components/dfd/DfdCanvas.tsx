@@ -6,6 +6,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  ConnectionMode,
   Connection,
   Panel,
   BackgroundVariant,
@@ -984,6 +985,7 @@ export function DfdCanvas() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onReconnect={onReconnect}
+          connectionMode={ConnectionMode.Loose}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onPaneClick={handlePaneClick}

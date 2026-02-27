@@ -1,36 +1,29 @@
 import { Handle, Position } from '@xyflow/react';
 
-const handleStyle = { width: 6, height: 6, background: '#555', border: '1px solid #888' };
-
-const sides = [
-  { pos: Position.Top, axis: 'left' as const, id: 'top' },
-  { pos: Position.Bottom, axis: 'left' as const, id: 'bottom' },
-  { pos: Position.Left, axis: 'top' as const, id: 'left' },
-  { pos: Position.Right, axis: 'top' as const, id: 'right' },
-];
-const offsets = ['25%', '50%', '75%'];
+const handleStyle = {
+  width: 8,
+  height: 8,
+  background: '#4a9eff',
+  border: '2px solid #2d2d2d',
+  borderRadius: '50%',
+};
 
 /**
- * Standard connection handles for DFD nodes.
- * 3 handles per side at 25%, 50%, 75% positions.
- * Each handle can be both a connection start and end point.
+ * 8 connection handles: 2 per side (at 33% and 66%).
+ * All handles are type="source" with Loose connection mode
+ * so any handle can connect to any other handle.
  */
 export function NodeHandles() {
   return (
     <>
-      {sides.map(({ pos, axis, id }) =>
-        offsets.map((offset, i) => (
-          <Handle
-            key={`${id}-${i}`}
-            type="source"
-            position={pos}
-            id={`${id}-${i}`}
-            isConnectableStart
-            isConnectableEnd
-            style={{ ...handleStyle, [axis]: offset }}
-          />
-        ))
-      )}
+      <Handle type="source" position={Position.Top} id="t1" style={{ ...handleStyle, left: '33%' }} />
+      <Handle type="source" position={Position.Top} id="t2" style={{ ...handleStyle, left: '66%' }} />
+      <Handle type="source" position={Position.Bottom} id="b1" style={{ ...handleStyle, left: '33%' }} />
+      <Handle type="source" position={Position.Bottom} id="b2" style={{ ...handleStyle, left: '66%' }} />
+      <Handle type="source" position={Position.Left} id="l1" style={{ ...handleStyle, top: '33%' }} />
+      <Handle type="source" position={Position.Left} id="l2" style={{ ...handleStyle, top: '66%' }} />
+      <Handle type="source" position={Position.Right} id="r1" style={{ ...handleStyle, top: '33%' }} />
+      <Handle type="source" position={Position.Right} id="r2" style={{ ...handleStyle, top: '66%' }} />
     </>
   );
 }
