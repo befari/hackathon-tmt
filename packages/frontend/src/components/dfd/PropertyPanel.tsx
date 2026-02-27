@@ -19,6 +19,7 @@ import {
   DialogBody,
   DialogActions,
   DialogContent,
+  Tooltip,
 } from '@fluentui/react-components';
 import { Delete20Regular, Dismiss16Regular, ShieldTask20Regular, Add16Regular, ArrowRight16Regular } from '@fluentui/react-icons';
 import { api } from '../../api/client';
@@ -278,14 +279,15 @@ export function PropertyPanel({
         <Text weight="semibold" size={300}>
           {isNode ? 'Component Properties' : 'Data Flow Properties'}
         </Text>
-        <Button
-          appearance="subtle"
-          icon={<Dismiss16Regular />}
-          size="small"
-          aria-label="Close properties panel"
-          title="Close"
-          onClick={onClose}
-        />
+        <Tooltip content="Close" relationship="label">
+          <Button
+            appearance="subtle"
+            icon={<Dismiss16Regular />}
+            size="small"
+            aria-label="Close properties panel"
+            onClick={onClose}
+          />
+        </Tooltip>
       </div>
 
       <div className={styles.body}>
@@ -357,16 +359,17 @@ export function PropertyPanel({
               <ShieldTask20Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
               Threats ({linkedThreats.length})
             </Text>
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<Add16Regular />}
-              aria-label="Add threat"
-              title="Add a new threat"
-              onClick={() => setAddThreatOpen(true)}
-            >
-              Add
-            </Button>
+            <Tooltip content="Add a new threat" relationship="description">
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Add16Regular />}
+                aria-label="Add threat"
+                onClick={() => setAddThreatOpen(true)}
+              >
+                Add
+              </Button>
+            </Tooltip>
           </div>
           {linkedThreats.map((t: any) => (
             <div
@@ -411,14 +414,15 @@ export function PropertyPanel({
           onOpenChange={(_e, data) => setDeleteDialogOpen(data.open)}
         >
           <DialogTrigger>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              style={{ color: tokens.colorPaletteRedForeground1 }}
-              title="Delete this component or data flow"
-            >
-              Delete
-            </Button>
+            <Tooltip content="Delete this component or data flow" relationship="description">
+              <Button
+                appearance="subtle"
+                icon={<Delete20Regular />}
+                style={{ color: tokens.colorPaletteRedForeground1 }}
+              >
+                Delete
+              </Button>
+            </Tooltip>
           </DialogTrigger>
           <DialogSurface>
             <DialogBody>

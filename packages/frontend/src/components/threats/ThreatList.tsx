@@ -14,6 +14,7 @@ import {
   CounterBadge,
   Divider,
   Input,
+  Tooltip,
   Dialog,
   DialogTrigger,
   DialogSurface,
@@ -385,18 +386,21 @@ export function ThreatList() {
               ))}
             </Dropdown>
           )}
-          <Button
-            appearance="subtle"
-            icon={<BrainCircuit20Regular />}
-            onClick={handleGenerateThreats}
-            disabled={generating}
-            title="Auto-generate STRIDE threats using AI"
-          >
-            {generating ? 'Generating...' : 'Auto-Generate'}
-          </Button>
+          <Tooltip content="Auto-generate STRIDE threats using AI" relationship="description">
+            <Button
+              appearance="subtle"
+              icon={<BrainCircuit20Regular />}
+              onClick={handleGenerateThreats}
+              disabled={generating}
+            >
+              {generating ? 'Generating...' : 'Auto-Generate'}
+            </Button>
+          </Tooltip>
           <Dialog open={createOpen} onOpenChange={(_e, data) => setCreateOpen(data.open)}>
             <DialogTrigger>
-              <Button appearance="primary" icon={<Add20Regular />} title="Manually add a new threat">Add Threat</Button>
+              <Tooltip content="Manually add a new threat" relationship="description">
+                <Button appearance="primary" icon={<Add20Regular />}>Add Threat</Button>
+              </Tooltip>
             </DialogTrigger>
             <DialogSurface>
               <DialogBody>
@@ -492,47 +496,58 @@ export function ThreatList() {
                   </div>
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     {((threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId) && (
-                      <Button size="small" appearance="subtle" icon={<Eye20Regular />}
-                        aria-label={`View ${threat.title} in DFD`} title="View in DFD"
-                        onClick={() => {
-                          const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
-                          const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
-                          navigate(`/model/${id}?diagram=${diagId}${focusId ? `&focus=${focusId}` : ''}`);
-                        }}
-                      />
+                      <Tooltip content="View in DFD" relationship="label">
+                        <Button size="small" appearance="subtle" icon={<Eye20Regular />}
+                          aria-label={`View ${threat.title} in DFD`}
+                          onClick={() => {
+                            const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
+                            const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
+                            navigate(`/model/${id}?diagram=${diagId}${focusId ? `&focus=${focusId}` : ''}`);
+                          }}
+                        />
+                      </Tooltip>
                     )}
                     {isEditing ? (
                       <>
-                        <Button size="small" appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
-                        <Button size="small" appearance="secondary" onClick={() => { setEditThreatId(null); setEditThreat(null); }}>Cancel</Button>
+                        <Tooltip content="Save changes" relationship="description">
+                          <Button size="small" appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
+                        </Tooltip>
+                        <Tooltip content="Discard changes" relationship="description">
+                          <Button size="small" appearance="secondary" onClick={() => { setEditThreatId(null); setEditThreat(null); }}>Cancel</Button>
+                        </Tooltip>
                       </>
                     ) : (
-                      <Button size="small" appearance="subtle" icon={<Edit20Regular />}
-                        aria-label={`Edit ${threat.title}`} title="Edit threat"
-                        onClick={() => {
-                          setEditThreatId(threat.id);
-                          setEditThreat({
-                            id: threat.id, title: threat.title, description: threat.description,
-                            strideCategory: threat.strideCategory, severity: threat.severity,
-                            mitigationNotes: (threat as any).mitigationNotes || '',
-                          });
-                        }}
-                      />
+                      <Tooltip content="Edit threat" relationship="label">
+                        <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                          aria-label={`Edit ${threat.title}`}
+                          onClick={() => {
+                            setEditThreatId(threat.id);
+                            setEditThreat({
+                              id: threat.id, title: threat.title, description: threat.description,
+                              strideCategory: threat.strideCategory, severity: threat.severity,
+                              mitigationNotes: (threat as any).mitigationNotes || '',
+                            });
+                          }}
+                        />
+                      </Tooltip>
                     )}
-                    <Button size="small" appearance="subtle" icon={<Delete20Regular />}
-                      style={{ color: tokens.colorPaletteRedForeground1 }}
-                      aria-label={`Delete ${threat.title}`} title="Delete threat"
-                      onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
-                    />
-                    <Button size="small" appearance="subtle"
-                      icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
-                      aria-label={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
-                      title={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
-                      onClick={() => toggleComments(threat.id)}
-                    >
-                      <Comment20Regular style={{ marginRight: '4px' }} />
-                      {commentCounts[threat.id] || 0}
-                    </Button>
+                    <Tooltip content="Delete threat" relationship="label">
+                      <Button size="small" appearance="subtle" icon={<Delete20Regular />}
+                        style={{ color: tokens.colorPaletteRedForeground1 }}
+                        aria-label={`Delete ${threat.title}`}
+                        onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
+                      />
+                    </Tooltip>
+                    <Tooltip content={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'} relationship="label">
+                      <Button size="small" appearance="subtle"
+                        icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
+                        aria-label={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
+                        onClick={() => toggleComments(threat.id)}
+                      >
+                        <Comment20Regular style={{ marginRight: '4px' }} />
+                        {commentCounts[threat.id] || 0}
+                      </Button>
+                    </Tooltip>
                   </div>
                 </div>
 

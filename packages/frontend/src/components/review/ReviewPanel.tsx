@@ -20,6 +20,7 @@ import {
   Divider,
   Dropdown,
   Option,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Add20Regular,
@@ -244,9 +245,11 @@ export function ReviewPanel() {
         </Text>
         <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
           <DialogTrigger>
-            <Button appearance="primary" icon={<Add20Regular />} title="Start a new review">
-              New Review
-            </Button>
+            <Tooltip content="Start a new review" relationship="description">
+              <Button appearance="primary" icon={<Add20Regular />}>
+                New Review
+              </Button>
+            </Tooltip>
           </DialogTrigger>
           <DialogSurface>
             <DialogBody>
@@ -445,25 +448,27 @@ export function ReviewPanel() {
 
                 <div className={styles.actions}>
                   {!comment.resolved && (
+                    <Tooltip content="Mark as resolved" relationship="description">
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<Checkmark20Regular />}
+                        onClick={() => handleResolve(comment.id)}
+                      >
+                        Resolve
+                      </Button>
+                    </Tooltip>
+                  )}
+                  <Tooltip content="Reply to this comment" relationship="description">
                     <Button
                       size="small"
                       appearance="subtle"
-                      icon={<Checkmark20Regular />}
-                      onClick={() => handleResolve(comment.id)}
-                      title="Mark as resolved"
+                      icon={<ArrowReply20Regular />}
+                      onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
                     >
-                      Resolve
+                      Reply
                     </Button>
-                  )}
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    icon={<ArrowReply20Regular />}
-                    onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                    title="Reply to this comment"
-                  >
-                    Reply
-                  </Button>
+                  </Tooltip>
                 </div>
 
                 {replyingTo === comment.id && (

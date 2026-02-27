@@ -3,7 +3,6 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
@@ -45,6 +44,7 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowUpload20Regular,
@@ -58,6 +58,9 @@ import {
   Checkmark20Regular,
   Delete16Regular,
   MoreHorizontal20Regular,
+  ZoomIn20Regular,
+  ZoomOut20Regular,
+  ZoomFitRegular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -316,6 +319,7 @@ export function DfdCanvas() {
   const [newDiagramName, setNewDiagramName] = useState('');
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
+  const reactFlowRef = useRef<any>(null);
   const MAX_VISIBLE_TABS = 8;
 
   // Refs to always have latest state (avoids stale closures in callbacks)
@@ -947,42 +951,76 @@ export function DfdCanvas() {
           fitView
           snapToGrid={false}
           selectNodesOnDrag={false}
+          onInit={(instance) => { reactFlowRef.current = instance; }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <Controls style={{ backgroundColor: tokens.colorNeutralBackground4, borderColor: tokens.colorNeutralStroke1, borderRadius: '8px' }} />
-          <Panel position="bottom-left" style={{ left: '50px', bottom: '10px' }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <Button
-                appearance="subtle"
-                icon={<ArrowUndo20Regular />}
-                size="small"
-                disabled={!canUndo}
-                onClick={() => undo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
-                title="Undo (Ctrl+Z)"
-                aria-label="Undo"
-                style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
-              />
-              <Button
-                appearance="subtle"
-                icon={<ArrowRedo20Regular />}
-                size="small"
-                disabled={!canRedo}
-                onClick={() => redo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
-                title="Redo (Ctrl+Y)"
-                aria-label="Redo"
-                style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
-              />
+          <Panel position="bottom-left" style={{ bottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <Tooltip content="Zoom in" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<ZoomIn20Regular />}
+                  size="small"
+                  onClick={() => reactFlowRef.current?.zoomIn()}
+                  aria-label="Zoom in"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
+              <Tooltip content="Zoom out" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<ZoomOut20Regular />}
+                  size="small"
+                  onClick={() => reactFlowRef.current?.zoomOut()}
+                  aria-label="Zoom out"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
+              <Tooltip content="Fit to view" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<ZoomFitRegular />}
+                  size="small"
+                  onClick={() => reactFlowRef.current?.fitView()}
+                  aria-label="Fit to view"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
               <div style={{ width: '1px', height: '20px', backgroundColor: tokens.colorNeutralStroke2 }} />
-              <Button
-                appearance="subtle"
-                icon={saveStatus === 'saved' ? <Checkmark20Regular /> : <Save20Regular />}
-                size="small"
-                disabled={saveStatus === 'saving'}
-                onClick={handleSaveAll}
-                title="Save All (Ctrl+S)"
-                aria-label="Save all changes"
-                style={{ backgroundColor: tokens.colorNeutralBackground4, color: saveStatus === 'saved' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground2, minWidth: 'auto' }}
-              />
+              <Tooltip content="Undo (Ctrl+Z)" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<ArrowUndo20Regular />}
+                  size="small"
+                  disabled={!canUndo}
+                  onClick={() => undo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
+                  aria-label="Undo"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
+              <Tooltip content="Redo (Ctrl+Y)" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<ArrowRedo20Regular />}
+                  size="small"
+                  disabled={!canRedo}
+                  onClick={() => redo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
+                  aria-label="Redo"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
+              <div style={{ width: '1px', height: '20px', backgroundColor: tokens.colorNeutralStroke2 }} />
+              <Tooltip content="Save All (Ctrl+S)" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={saveStatus === 'saved' ? <Checkmark20Regular /> : <Save20Regular />}
+                  size="small"
+                  disabled={saveStatus === 'saving'}
+                  onClick={handleSaveAll}
+                  aria-label="Save all changes"
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: saveStatus === 'saved' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
             </div>
           </Panel>
           <MiniMap
@@ -1013,15 +1051,16 @@ export function DfdCanvas() {
                   style={{ display: 'none' }}
                   aria-label="Upload source code zip file"
                 />
-                <Button
-                  appearance="primary"
-                  icon={<ArrowUpload20Regular />}
-                  onClick={() => fileInputRef.current?.click()}
-                  size="small"
-                  title="Upload source code to auto-generate DFD"
-                >
-                  Upload Source Code (.zip)
-                </Button>
+                <Tooltip content="Upload source code to auto-generate DFD" relationship="description">
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowUpload20Regular />}
+                    onClick={() => fileInputRef.current?.click()}
+                    size="small"
+                  >
+                    Upload Source Code (.zip)
+                  </Button>
+                </Tooltip>
               </div>
             )}
             {uploading && (
@@ -1049,32 +1088,34 @@ export function DfdCanvas() {
             style={{ top: actionNode.y, left: actionNode.x }}
           >
             <div className={styles.nodeActionBar}>
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<Comment20Regular />}
-              title="Add a comment on this component"
-              onClick={() => {
-                const node = nodes.find((n) => n.id === actionNode.nodeId);
-                const label = (node?.data as any)?.label || 'Component';
-                openCommentPanel(actionNode.nodeId, label, actionNode.x, actionNode.y);
-              }}
-            >
-              Comment
-            </Button>
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<ShieldTask20Regular />}
-              title="Add a threat linked to this component"
-              onClick={() => {
-                const node = nodes.find((n) => n.id === actionNode.nodeId);
-                const label = (node?.data as any)?.label || 'Component';
-                openThreatDialog(actionNode.nodeId, label);
+            <Tooltip content="Add a comment on this component" relationship="description">
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Comment20Regular />}
+                onClick={() => {
+                  const node = nodes.find((n) => n.id === actionNode.nodeId);
+                  const label = (node?.data as any)?.label || 'Component';
+                  openCommentPanel(actionNode.nodeId, label, actionNode.x, actionNode.y);
+                }}
+              >
+                Comment
+              </Button>
+            </Tooltip>
+            <Tooltip content="Add a threat linked to this component" relationship="description">
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ShieldTask20Regular />}
+                onClick={() => {
+                  const node = nodes.find((n) => n.id === actionNode.nodeId);
+                  const label = (node?.data as any)?.label || 'Component';
+                  openThreatDialog(actionNode.nodeId, label);
               }}
             >
               Add Threat
             </Button>
+            </Tooltip>
             </div>
           </div>
         )}
@@ -1089,14 +1130,15 @@ export function DfdCanvas() {
               <Text weight="semibold" size={300}>
                 Comments on {commentPanelNode.label}
               </Text>
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<Dismiss16Regular />}
-                aria-label="Close comments"
-                title="Close comments"
-                onClick={() => setCommentPanelNode(null)}
-              />
+              <Tooltip content="Close comments" relationship="label">
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<Dismiss16Regular />}
+                  aria-label="Close comments"
+                  onClick={() => setCommentPanelNode(null)}
+                />
+              </Tooltip>
             </div>
 
             {nodeComments.length === 0 && (

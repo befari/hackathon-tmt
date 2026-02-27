@@ -149,7 +149,7 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
     <Dialog open={open} onOpenChange={(_e, data) => setOpen(data.open)}>
       <DialogTrigger>
         <Tooltip content="Share" relationship="label">
-          <Button icon={<Share20Regular />} appearance="subtle" size="small" aria-label="Share" title="Share this threat model">
+          <Button icon={<Share20Regular />} appearance="subtle" size="small" aria-label="Share">
             Share
           </Button>
         </Tooltip>
@@ -177,9 +177,11 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 <Option value="REVIEWER">Reviewer</Option>
                 <Option value="VIEWER">Viewer</Option>
               </Dropdown>
-              <Button icon={<PersonAdd20Regular />} appearance="primary" onClick={handleInvite} disabled={!inviteEmail.trim()} title="Send invitation">
-                Invite
-              </Button>
+              <Tooltip content="Send invitation" relationship="description">
+                <Button icon={<PersonAdd20Regular />} appearance="primary" onClick={handleInvite} disabled={!inviteEmail.trim()}>
+                  Invite
+                </Button>
+              </Tooltip>
             </div>
 
             {/* Current members */}
@@ -197,14 +199,15 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <Badge appearance="outline" color={roleColors[m.role] || 'subtle'}>{m.role}</Badge>
                       {m.role !== 'OWNER' && (
-                        <Button
-                          icon={<Delete20Regular />}
-                          appearance="subtle"
-                          size="small"
-                          onClick={() => handleRemoveMember(m.id)}
-                          aria-label="Remove member"
-                          title="Remove member"
-                        />
+                        <Tooltip content="Remove member" relationship="label">
+                          <Button
+                            icon={<Delete20Regular />}
+                            appearance="subtle"
+                            size="small"
+                            onClick={() => handleRemoveMember(m.id)}
+                            aria-label="Remove member"
+                          />
+                        </Tooltip>
                       )}
                     </div>
                   </div>
@@ -230,9 +233,11 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 <Option value="REVIEWER">Reviewer</Option>
                 <Option value="VIEWER">Viewer</Option>
               </Dropdown>
-              <Button icon={<Link20Regular />} appearance="secondary" onClick={handleCreateLink} title="Create a shareable link">
-                Create Link
-              </Button>
+              <Tooltip content="Create a shareable link" relationship="description">
+                <Button icon={<Link20Regular />} appearance="secondary" onClick={handleCreateLink}>
+                  Create Link
+                </Button>
+              </Tooltip>
             </div>
 
             {shareLinks.map((link: any) => (
@@ -241,24 +246,26 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 <span className={styles.linkUrl}>
                   {window.location.origin}/join/{link.token}
                 </span>
-                <Button
-                  icon={<Copy20Regular />}
-                  appearance="subtle"
-                  size="small"
-                  onClick={() => handleCopyLink(link.token)}
-                  aria-label="Copy link"
-                  title="Copy share link"
-                >
-                  {copied === link.token ? 'Copied!' : ''}
-                </Button>
-                <Button
-                  icon={<Delete20Regular />}
-                  appearance="subtle"
-                  size="small"
-                  onClick={() => handleDeleteLink(link.id)}
-                  aria-label="Revoke link"
-                  title="Revoke share link"
-                />
+                <Tooltip content="Copy share link" relationship="label">
+                  <Button
+                    icon={<Copy20Regular />}
+                    appearance="subtle"
+                    size="small"
+                    onClick={() => handleCopyLink(link.token)}
+                    aria-label="Copy link"
+                  >
+                    {copied === link.token ? 'Copied!' : ''}
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Revoke share link" relationship="label">
+                  <Button
+                    icon={<Delete20Regular />}
+                    appearance="subtle"
+                    size="small"
+                    onClick={() => handleDeleteLink(link.id)}
+                    aria-label="Revoke link"
+                  />
+                </Tooltip>
               </div>
             ))}
 

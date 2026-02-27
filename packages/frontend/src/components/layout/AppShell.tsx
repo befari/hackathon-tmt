@@ -162,15 +162,16 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className={styles.bottomSection}>
           {isAuthEnabled && !isAuthenticated && (
-            <Button
-              icon={<PersonAdd20Regular />}
-              appearance="primary"
-              size="small"
-              onClick={login}
-              title="Sign in with your account"
-            >
-              {expanded ? 'Sign In' : ''}
-            </Button>
+            <Tooltip content="Sign in with your account" relationship="description">
+              <Button
+                icon={<PersonAdd20Regular />}
+                appearance="primary"
+                size="small"
+                onClick={login}
+              >
+                {expanded ? 'Sign In' : ''}
+              </Button>
+            </Tooltip>
           )}
 
           {isAuthEnabled && isAuthenticated && user && (
@@ -190,28 +191,30 @@ export function AppShell({ children }: AppShellProps) {
                 <div className={styles.popoverContent}>
                   <Text weight="semibold">{user.name}</Text>
                   <Text size={200} style={{ opacity: 0.7 }}>{user.email}</Text>
-                  <Button
-                    icon={<SignOut20Regular />}
-                    appearance="subtle"
-                    onClick={logout}
-                    size="small"
-                    title="Sign out of your account"
-                  >
-                    Sign Out
-                  </Button>
+                  <Tooltip content="Sign out of your account" relationship="description">
+                    <Button
+                      icon={<SignOut20Regular />}
+                      appearance="subtle"
+                      onClick={logout}
+                      size="small"
+                    >
+                      Sign Out
+                    </Button>
+                  </Tooltip>
                 </div>
               </PopoverSurface>
             </Popover>
           )}
 
-          <Button
-            icon={expanded ? <ChevronLeft20Regular /> : <ChevronRight20Regular />}
-            appearance="subtle"
-            onClick={() => setExpanded(!expanded)}
-            size="small"
-            aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          />
+          <Tooltip content={expanded ? 'Collapse sidebar' : 'Expand sidebar'} relationship="label">
+            <Button
+              icon={expanded ? <ChevronLeft20Regular /> : <ChevronRight20Regular />}
+              appearance="subtle"
+              onClick={() => setExpanded(!expanded)}
+              size="small"
+              aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            />
+          </Tooltip>
         </div>
       </nav>
 

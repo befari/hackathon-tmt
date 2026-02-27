@@ -7,6 +7,7 @@ import {
   Input,
   Button,
   Spinner,
+  Tooltip,
 } from '@fluentui/react-components';
 import { Send20Regular } from '@fluentui/react-icons';
 import ReactMarkdown from 'react-markdown';
@@ -147,14 +148,15 @@ export function ChatPanel() {
           disabled={sending}
           aria-label="Type a message"
         />
-        <Button
-          appearance="primary"
-          icon={sending ? <Spinner size="tiny" /> : <Send20Regular />}
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          title="Send message"
-          aria-label="Send message"
-        />
+        <Tooltip content="Send message" relationship="label">
+          <Button
+            appearance="primary"
+            icon={sending ? <Spinner size="tiny" /> : <Send20Regular />}
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            aria-label="Send message"
+          />
+        </Tooltip>
       </div>
     </div>
   );

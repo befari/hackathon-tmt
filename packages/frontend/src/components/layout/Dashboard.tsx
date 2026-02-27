@@ -23,6 +23,7 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  Tooltip,
 } from '@fluentui/react-components';
 import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
@@ -167,20 +168,23 @@ export function Dashboard() {
             onChange={handleImportTm7}
             aria-label="Import TM7 file"
           />
-          <Button
-            appearance="secondary"
-            icon={<ArrowUpload20Regular />}
-            disabled={importing}
-            onClick={() => fileInputRef.current?.click()}
-            title="Import a Microsoft Threat Modeling Tool file"
-          >
-            {importing ? 'Importing…' : 'Import .tm7'}
-          </Button>
+          <Tooltip content="Import a Microsoft Threat Modeling Tool file" relationship="description">
+            <Button
+              appearance="secondary"
+              icon={<ArrowUpload20Regular />}
+              disabled={importing}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {importing ? 'Importing…' : 'Import .tm7'}
+            </Button>
+          </Tooltip>
           <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
           <DialogTrigger>
-            <Button appearance="primary" icon={<Add20Regular />} title="Create a new threat model">
-              New Threat Model
-            </Button>
+            <Tooltip content="Create a new threat model" relationship="description">
+              <Button appearance="primary" icon={<Add20Regular />}>
+                New Threat Model
+              </Button>
+            </Tooltip>
           </DialogTrigger>
           <DialogSurface>
             <DialogBody>
@@ -236,14 +240,15 @@ export function Dashboard() {
                 action={
                   <Menu>
                     <MenuTrigger>
-                      <Button
-                        appearance="subtle"
-                        icon={<MoreVertical20Regular />}
-                        size="small"
-                        aria-label="Threat model actions"
-                        title="More actions"
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <Tooltip content="More actions" relationship="label">
+                        <Button
+                          appearance="subtle"
+                          icon={<MoreVertical20Regular />}
+                          size="small"
+                          aria-label="Threat model actions"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </Tooltip>
                     </MenuTrigger>
                     <MenuPopover>
                       <MenuList>
