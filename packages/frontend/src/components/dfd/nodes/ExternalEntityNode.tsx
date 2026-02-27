@@ -23,6 +23,7 @@ const useStyles = makeStyles({
     minWidth: '80px',
     minHeight: '40px',
     cursor: 'pointer',
+    overflow: 'hidden',
     '&:hover': {
       boxShadow: tokens.shadow8,
     },
@@ -50,7 +51,7 @@ export function ExternalEntityNode({ data, selected }: NodeProps) {
       <Handle type="target" position={Position.Left} id="left-tgt" />
       <div className={styles.wrapper}>
         <div className={styles.node}>
-          <Text size={200} weight="semibold">
+          <Text size={200} weight="semibold" style={{ wordBreak: 'break-word', lineHeight: '1.2', overflow: 'hidden' }}>
             {(data as any).label}
           </Text>
         </div>

@@ -129,10 +129,10 @@ export function BendableEdge({
       {/* Label */}
       {label && (
         <foreignObject
-          x={labelX - 50}
-          y={labelY - 10}
-          width={100}
-          height={20}
+          x={labelX - 75}
+          y={labelY - 12}
+          width={150}
+          height={24}
           style={{ overflow: 'visible', pointerEvents: 'none' }}
         >
           <div
@@ -140,10 +140,12 @@ export function BendableEdge({
               fontSize: 11,
               textAlign: 'center',
               color: '#ccc',
-              backgroundColor: 'rgba(30,30,30,0.8)',
-              padding: '1px 4px',
+              backgroundColor: 'rgba(30,30,30,0.85)',
+              padding: '2px 6px',
               borderRadius: 3,
               whiteSpace: 'nowrap',
+              width: 'fit-content',
+              margin: '0 auto',
               pointerEvents: 'none',
             }}
           >

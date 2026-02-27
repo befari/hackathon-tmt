@@ -27,7 +27,7 @@ export function TextAnnotationNode({ data, selected }: NodeProps) {
         onResizeStart={takeSnapshot}
         handleStyle={{ backgroundColor: tokens.colorNeutralStroke2, width: 6, height: 6 }} />
       <div className={styles.node}>
-        <Text size={200}>
+        <Text size={200} style={{ wordBreak: 'break-word', lineHeight: '1.2' }}>
           {(data as any).label}
         </Text>
       </div>
