@@ -8,6 +8,7 @@ const useStyles = makeStyles({
     position: 'relative' as const,
     width: '100%',
     height: '100%',
+    pointerEvents: 'none' as const,
   },
   node: {
     padding: '8px 16px',
@@ -22,12 +23,17 @@ const useStyles = makeStyles({
     height: '100%',
     minWidth: '200px',
     minHeight: '100px',
+    pointerEvents: 'none' as const,
+  },
+  label: {
+    pointerEvents: 'auto' as const,
     cursor: 'pointer',
   },
   badge: {
     position: 'absolute' as const,
     top: '-6px',
     right: '-6px',
+    pointerEvents: 'auto' as const,
   },
 });
 
@@ -49,7 +55,7 @@ export function TrustBoundaryNode({ data, selected }: NodeProps) {
       <NodeHandles />
       <div className={styles.wrapper}>
         <div className={styles.node}>
-          <Text size={200} weight="semibold" style={{ wordBreak: 'break-word', lineHeight: '1.2', overflow: 'hidden' }}>
+          <Text size={200} weight="semibold" className={styles.label} style={{ wordBreak: 'break-word', lineHeight: '1.2', overflow: 'hidden' }}>
             {(data as any).label}
           </Text>
         </div>
