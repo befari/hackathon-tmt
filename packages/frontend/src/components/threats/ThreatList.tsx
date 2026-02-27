@@ -144,6 +144,8 @@ const strideLabels: Record<string, string> = {
   ELEVATION_OF_PRIVILEGE: 'Elevation of Privilege',
 };
 
+const CURRENT_USER = 'Current User';
+
 export function ThreatList() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
@@ -375,6 +377,17 @@ export function ThreatList() {
       const res = await fetch(`/api/comments?threatId=${expandedThreat}`);
       const { data } = await res.json();
       setThreatComments((prev) => ({ ...prev, [expandedThreat]: data || [] }));
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+    if (expandedThreat) {
+      const res = await fetch(`/api/comments?threatId=${expandedThreat}`);
+      const { data } = await res.json();
+      setThreatComments((prev) => ({ ...prev, [expandedThreat]: data || [] }));
+      // Update comment count
+      setCommentCounts((prev) => ({ ...prev, [expandedThreat]: (data || []).length }));
     }
   };
 
@@ -729,14 +742,23 @@ export function ThreatList() {
                           <Text size={100} weight="semibold">{comment.author}</Text>
                           <Text size={100}>{new Date(comment.createdAt).toLocaleString()}</Text>
                           {comment.resolved && <Badge appearance="outline" color="success" size="small">Resolved</Badge>}
-                          {editingCommentId !== comment.id && (
-                            <Tooltip content="Edit comment" relationship="label">
-                              <Button size="small" appearance="subtle" icon={<Edit20Regular />}
-                                aria-label="Edit comment"
-                                style={{ minWidth: 'auto', padding: '2px' }}
-                                onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.body); }}
-                              />
-                            </Tooltip>
+                          {comment.author === CURRENT_USER && editingCommentId !== comment.id && (
+                            <>
+                              <Tooltip content="Edit comment" relationship="label">
+                                <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                                  aria-label="Edit comment"
+                                  style={{ minWidth: 'auto', padding: '2px' }}
+                                  onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.body); }}
+                                />
+                              </Tooltip>
+                              <Tooltip content="Delete comment" relationship="label">
+                                <Button size="small" appearance="subtle" icon={<Delete20Regular />}
+                                  aria-label="Delete comment"
+                                  style={{ minWidth: 'auto', padding: '2px', color: tokens.colorPaletteRedForeground1 }}
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                />
+                              </Tooltip>
+                            </>
                           )}
                         </div>
                         <div className={styles.commentBody}>
@@ -764,14 +786,23 @@ export function ThreatList() {
                             <div className={styles.commentMeta}>
                               <Text size={100} weight="semibold">{reply.author}</Text>
                               <Text size={100}>{new Date(reply.createdAt).toLocaleString()}</Text>
-                              {editingCommentId !== reply.id && (
-                                <Tooltip content="Edit reply" relationship="label">
-                                  <Button size="small" appearance="subtle" icon={<Edit20Regular />}
-                                    aria-label="Edit reply"
-                                    style={{ minWidth: 'auto', padding: '2px' }}
-                                    onClick={() => { setEditingCommentId(reply.id); setEditCommentText(reply.body); }}
-                                  />
-                                </Tooltip>
+                              {reply.author === CURRENT_USER && editingCommentId !== reply.id && (
+                                <>
+                                  <Tooltip content="Edit reply" relationship="label">
+                                    <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                                      aria-label="Edit reply"
+                                      style={{ minWidth: 'auto', padding: '2px' }}
+                                      onClick={() => { setEditingCommentId(reply.id); setEditCommentText(reply.body); }}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip content="Delete reply" relationship="label">
+                                    <Button size="small" appearance="subtle" icon={<Delete20Regular />}
+                                      aria-label="Delete reply"
+                                      style={{ minWidth: 'auto', padding: '2px', color: tokens.colorPaletteRedForeground1 }}
+                                      onClick={() => handleDeleteComment(reply.id)}
+                                    />
+                                  </Tooltip>
+                                </>
                               )}
                             </div>
                             {editingCommentId === reply.id ? (

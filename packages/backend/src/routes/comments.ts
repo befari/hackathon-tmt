@@ -102,8 +102,9 @@ commentRouter.get('/counts', asyncHandler(async (req: Request, res: Response) =>
   });
 }));
 
-// Delete a comment
+// Delete a comment (and its replies)
 commentRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+  await prisma.comment.deleteMany({ where: { parentId: req.params.id as string } });
   await prisma.comment.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
 }));
