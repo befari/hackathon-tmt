@@ -9,9 +9,17 @@ import {
   Tooltip,
   mergeClasses,
 } from '@fluentui/react-components';
-import { Send20Regular } from '@fluentui/react-icons';
+import {
+  Send20Regular,
+  Add20Regular,
+  Delete20Regular,
+  Edit20Regular,
+  Chat20Regular,
+  Checkmark20Regular,
+  Dismiss20Regular,
+} from '@fluentui/react-icons';
 import ReactMarkdown from 'react-markdown';
-import type { ChatMessage } from '@superior-tmt/shared';
+import type { ChatMessage, ChatSession } from '@superior-tmt/shared';
 
 interface MentionItem {
   type: 'threat' | 'diagram';
@@ -20,13 +28,81 @@ interface MentionItem {
   detail: string;
 }
 
+interface SessionWithCount extends ChatSession {
+  _count?: { messages: number };
+}
+
 const useStyles = makeStyles({
+  outerContainer: {
+    display: 'flex',
+    height: '100%',
+  },
+  sidebar: {
+    width: '260px',
+    minWidth: '260px',
+    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  sidebarHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  sessionList: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  sessionItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    borderRadius: tokens.borderRadiusMedium,
+    cursor: 'pointer',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
+  sessionItemActive: {
+    backgroundColor: tokens.colorNeutralBackground1Selected,
+  },
+  sessionInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sessionTitle: {
+    fontSize: '13px',
+    fontWeight: 500 as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  sessionMeta: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  sessionActions: {
+    display: 'flex',
+    gap: '2px',
+    opacity: 0,
+    ':hover > &': { opacity: 1 },
+  },
+  sessionItemHover: {
+    ':hover > span:last-child': { opacity: 1 as any },
+  },
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
-    maxWidth: '1400px',
-    margin: '0 auto',
+    flex: 1,
+    minWidth: 0,
   },
   header: {
     padding: '20px 24px',
@@ -149,35 +225,61 @@ const useStyles = makeStyles({
   empty: {
     flex: 1,
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: '12px',
     color: tokens.colorNeutralForeground3,
+  },
+  renameInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: '2px 6px',
+    fontSize: '13px',
+    border: `1px solid ${tokens.colorBrandStroke1}`,
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    outline: 'none',
   },
 });
 
 export function ChatPanel() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
+
+  // Session state
+  const [sessions, setSessions] = useState<SessionWithCount[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  // Message state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Mention state
   const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [activeMentions, setActiveMentions] = useState<MentionItem[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionStartRef = useRef<number>(-1);
 
-  // Fetch chat history
-  useEffect(() => {
+  // Fetch sessions
+  const loadSessions = useCallback(() => {
     if (!id) return;
-    fetch(`/api/chat/${id}`)
+    fetch(`/api/chat/${id}/sessions`)
       .then((r) => r.json())
-      .then(({ data }) => setMessages(data || []))
+      .then(({ data }) => setSessions(data || []))
       .catch(console.error);
   }, [id]);
+
+  useEffect(() => { loadSessions(); }, [loadSessions]);
 
   // Fetch mentionable items
   useEffect(() => {
@@ -188,9 +290,57 @@ export function ChatPanel() {
       .catch(console.error);
   }, [id]);
 
+  // Load messages when active session changes
+  useEffect(() => {
+    if (!activeSessionId) { setMessages([]); return; }
+    fetch(`/api/chat/sessions/${activeSessionId}/messages`)
+      .then((r) => r.json())
+      .then(({ data }) => setMessages(data || []))
+      .catch(console.error);
+  }, [activeSessionId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // --- Session actions ---
+
+  const handleNewChat = async () => {
+    if (!id) return;
+    const res = await fetch(`/api/chat/${id}/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const { data } = await res.json();
+    setSessions((prev) => [data, ...prev]);
+    setActiveSessionId(data.id);
+    setMessages([]);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' });
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+      setMessages([]);
+    }
+  };
+
+  const handleRenameSession = async (sessionId: string) => {
+    if (!renameValue.trim()) { setRenamingId(null); return; }
+    await fetch(`/api/chat/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: renameValue.trim() }),
+    });
+    setSessions((prev) =>
+      prev.map((s) => s.id === sessionId ? { ...s, title: renameValue.trim() } : s)
+    );
+    setRenamingId(null);
+  };
+
+  // --- Mention logic ---
 
   const filteredMentions = mentionItems.filter((item) =>
     item.label.toLowerCase().includes(mentionFilter.toLowerCase())
@@ -206,7 +356,6 @@ export function ChatPanel() {
     setActiveMentions((prev) => [...prev, item]);
     setShowMentions(false);
     mentionStartRef.current = -1;
-    // Focus back to textarea
     setTimeout(() => {
       const ta = textareaRef.current;
       if (ta) {
@@ -221,12 +370,10 @@ export function ChatPanel() {
     const val = e.target.value;
     setInput(val);
 
-    // Auto-resize
     const ta = e.target;
     ta.style.height = 'auto';
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
 
-    // Check for @ trigger
     const cursor = ta.selectionStart;
     const textBeforeCursor = val.slice(0, cursor);
     const lastAt = textBeforeCursor.lastIndexOf('@');
@@ -234,7 +381,6 @@ export function ChatPanel() {
     if (lastAt >= 0) {
       const charBefore = lastAt > 0 ? val[lastAt - 1] : ' ';
       const textAfterAt = textBeforeCursor.slice(lastAt + 1);
-      // Only trigger if @ is at start or preceded by a space, and no space in the filter yet
       if ((charBefore === ' ' || charBefore === '\n' || lastAt === 0) && !textAfterAt.includes(' ')) {
         mentionStartRef.current = lastAt;
         setMentionFilter(textAfterAt);
@@ -248,26 +394,10 @@ export function ChatPanel() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMentions && filteredMentions.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setMentionIndex((i) => Math.min(i + 1, filteredMentions.length - 1));
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setMentionIndex((i) => Math.max(i - 1, 0));
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        insertMention(filteredMentions[mentionIndex]);
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setShowMentions(false);
-        return;
-      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => Math.min(i + 1, filteredMentions.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex((i) => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(filteredMentions[mentionIndex]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setShowMentions(false); return; }
     }
     if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
       e.preventDefault();
@@ -276,18 +406,16 @@ export function ChatPanel() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !id || sending) return;
+    if (!input.trim() || !activeSessionId || sending) return;
     const msg = input.trim();
     setInput('');
     setSending(true);
     const mentions = [...activeMentions];
     setActiveMentions([]);
-
-    // Reset textarea height
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     try {
-      const res = await fetch(`/api/chat/${id}`, {
+      const res = await fetch(`/api/chat/sessions/${activeSessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,8 +425,9 @@ export function ChatPanel() {
       });
       const { data } = await res.json();
       setMessages((prev) => [...prev, data.userMessage, data.assistantMessage]);
-      // Signal other panels to refresh — AI may have modified threats/components
       window.dispatchEvent(new CustomEvent('chat-action-executed'));
+      // Refresh sessions to update title and order
+      loadSessions();
     } catch (err) {
       console.error('Failed to send message:', err);
     } finally {
@@ -306,7 +435,6 @@ export function ChatPanel() {
     }
   };
 
-  // Render message content with styled @mentions
   const renderUserContent = (content: string) => {
     const parts = content.split(/(@(?:T-\d+:[^@]*?|DFD:[^@]*?)(?=\s|$))/g);
     return parts.map((part, i) =>
@@ -318,81 +446,204 @@ export function ChatPanel() {
     );
   };
 
+  const formatDate = (d: string) => {
+    const date = new Date(d);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <Text size={500} weight="semibold">
-          AI Assistant
-        </Text>
-        <Text size={200} block style={{ marginTop: '4px', opacity: 0.7 }}>
-          Ask questions about the architecture, threats, or code — use @ to reference threats & diagrams
-        </Text>
+    <div className={styles.outerContainer}>
+      {/* Session sidebar */}
+      <div className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <Text size={400} weight="semibold">Chats</Text>
+          <Tooltip content="New chat" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={<Add20Regular />}
+              onClick={handleNewChat}
+              size="small"
+              aria-label="New chat"
+            />
+          </Tooltip>
+        </div>
+        <div className={styles.sessionList}>
+          {sessions.length === 0 && (
+            <Text size={200} style={{ padding: '16px', textAlign: 'center', opacity: 0.6 }}>
+              No conversations yet
+            </Text>
+          )}
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              className={mergeClasses(
+                styles.sessionItem,
+                styles.sessionItemHover,
+                activeSessionId === s.id && styles.sessionItemActive
+              )}
+              onClick={() => { setActiveSessionId(s.id); setRenamingId(null); }}
+            >
+              <Chat20Regular style={{ flexShrink: 0, opacity: 0.6 }} />
+              {renamingId === s.id ? (
+                <>
+                  <input
+                    className={styles.renameInput}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRenameSession(s.id);
+                      if (e.key === 'Escape') setRenamingId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                  <Button
+                    appearance="subtle"
+                    icon={<Checkmark20Regular />}
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); handleRenameSession(s.id); }}
+                  />
+                  <Button
+                    appearance="subtle"
+                    icon={<Dismiss20Regular />}
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); setRenamingId(null); }}
+                  />
+                </>
+              ) : (
+                <>
+                  <div className={styles.sessionInfo}>
+                    <div className={styles.sessionTitle}>{s.title}</div>
+                    <div className={styles.sessionMeta}>
+                      {formatDate(s.updatedAt)}
+                      {s._count?.messages ? ` · ${s._count.messages} msgs` : ''}
+                    </div>
+                  </div>
+                  <span style={{ display: 'flex', gap: '2px', opacity: 0 }}>
+                    <Tooltip content="Rename" relationship="label">
+                      <Button
+                        appearance="subtle"
+                        icon={<Edit20Regular />}
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenamingId(s.id);
+                          setRenameValue(s.title);
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip content="Delete" relationship="label">
+                      <Button
+                        appearance="subtle"
+                        icon={<Delete20Regular />}
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id); }}
+                      />
+                    </Tooltip>
+                  </span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className={styles.messages}>
-        {messages.length === 0 && (
-          <div className={styles.empty}>
-            <Text>Start a conversation about your threat model</Text>
+      {/* Chat area */}
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Text size={500} weight="semibold">
+            {activeSessionId
+              ? sessions.find((s) => s.id === activeSessionId)?.title || 'AI Assistant'
+              : 'AI Assistant'}
+          </Text>
+          <Text size={200} block style={{ marginTop: '4px', opacity: 0.7 }}>
+            {activeSessionId
+              ? 'Use @ to reference threats & diagrams'
+              : 'Create or select a chat to get started'}
+          </Text>
+        </div>
+
+        <div className={styles.messages}>
+          {!activeSessionId ? (
+            <div className={styles.empty}>
+              <Chat20Regular style={{ fontSize: '48px', opacity: 0.3 }} />
+              <Text size={300}>Select a conversation or start a new one</Text>
+              <Button appearance="primary" icon={<Add20Regular />} onClick={handleNewChat}>
+                New Chat
+              </Button>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className={styles.empty}>
+              <Text>Start a conversation about your threat model</Text>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`${styles.message} ${
+                  msg.role === 'user' ? styles.userMessage : styles.assistantMessage
+                }`}
+              >
+                {msg.role === 'assistant' ? (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                ) : (
+                  <Text>{renderUserContent(msg.content)}</Text>
+                )}
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {activeSessionId && (
+          <div className={styles.inputArea}>
+            <div className={styles.inputWrapper}>
+              {showMentions && filteredMentions.length > 0 && (
+                <div className={styles.mentionDropdown}>
+                  {filteredMentions.map((item, i) => (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className={mergeClasses(
+                        styles.mentionItem,
+                        i === mentionIndex && styles.mentionItemActive
+                      )}
+                      onMouseDown={(e) => { e.preventDefault(); insertMention(item); }}
+                      onMouseEnter={() => setMentionIndex(i)}
+                    >
+                      <span className={styles.mentionLabel}>{item.label}</span>
+                      <span className={styles.mentionDetail}>{item.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                className={styles.textarea}
+                placeholder="Ask about threats, architecture... Type @ to mention"
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                disabled={sending}
+                rows={1}
+                aria-label="Type a message"
+              />
+            </div>
+            <Tooltip content="Send message" relationship="label">
+              <Button
+                appearance="primary"
+                icon={sending ? <Spinner size="tiny" /> : <Send20Regular />}
+                onClick={handleSend}
+                disabled={!input.trim() || sending}
+                aria-label="Send message"
+              />
+            </Tooltip>
           </div>
         )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`${styles.message} ${
-              msg.role === 'user' ? styles.userMessage : styles.assistantMessage
-            }`}
-          >
-            {msg.role === 'assistant' ? (
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
-            ) : (
-              <Text>{renderUserContent(msg.content)}</Text>
-            )}
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className={styles.inputArea}>
-        <div className={styles.inputWrapper}>
-          {showMentions && filteredMentions.length > 0 && (
-            <div className={styles.mentionDropdown}>
-              {filteredMentions.map((item, i) => (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  className={mergeClasses(
-                    styles.mentionItem,
-                    i === mentionIndex && styles.mentionItemActive
-                  )}
-                  onMouseDown={(e) => { e.preventDefault(); insertMention(item); }}
-                  onMouseEnter={() => setMentionIndex(i)}
-                >
-                  <span className={styles.mentionLabel}>{item.label}</span>
-                  <span className={styles.mentionDetail}>{item.detail}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <textarea
-            ref={textareaRef}
-            className={styles.textarea}
-            placeholder="Ask about threats, architecture... Type @ to mention"
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            disabled={sending}
-            rows={1}
-            aria-label="Type a message"
-          />
-        </div>
-        <Tooltip content="Send message" relationship="label">
-          <Button
-            appearance="primary"
-            icon={sending ? <Spinner size="tiny" /> : <Send20Regular />}
-            onClick={handleSend}
-            disabled={!input.trim() || sending}
-            aria-label="Send message"
-          />
-        </Tooltip>
       </div>
     </div>
   );

@@ -42,36 +42,86 @@ chatRouter.get('/:threatModelId/mentions', asyncHandler(async (req: Request, res
   });
 }));
 
-// Get chat history for a threat model
-chatRouter.get('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
-  const messages = await prisma.chatMessage.findMany({
+// --- Chat Sessions ---
+
+// List sessions for a threat model
+chatRouter.get('/:threatModelId/sessions', asyncHandler(async (req: Request, res: Response) => {
+  const sessions = await prisma.chatSession.findMany({
     where: { threatModelId: req.params.threatModelId as string },
+    orderBy: { updatedAt: 'desc' },
+    include: { _count: { select: { messages: true } } },
+  });
+  res.json({ data: sessions });
+}));
+
+// Create a new session
+chatRouter.post('/:threatModelId/sessions', asyncHandler(async (req: Request, res: Response) => {
+  const { title } = req.body;
+  const session = await prisma.chatSession.create({
+    data: {
+      title: title || 'New Chat',
+      threatModelId: req.params.threatModelId as string,
+    },
+  });
+  res.status(201).json({ data: session });
+}));
+
+// Rename a session
+chatRouter.patch('/sessions/:sessionId', asyncHandler(async (req: Request, res: Response) => {
+  const { title } = req.body;
+  const session = await prisma.chatSession.update({
+    where: { id: req.params.sessionId as string },
+    data: { title },
+  });
+  res.json({ data: session });
+}));
+
+// Delete a session (and its messages)
+chatRouter.delete('/sessions/:sessionId', asyncHandler(async (req: Request, res: Response) => {
+  await prisma.chatSession.delete({ where: { id: req.params.sessionId as string } });
+  res.json({ data: { success: true } });
+}));
+
+// --- Messages (scoped to session) ---
+
+// Get messages for a session
+chatRouter.get('/sessions/:sessionId/messages', asyncHandler(async (req: Request, res: Response) => {
+  const messages = await prisma.chatMessage.findMany({
+    where: { sessionId: req.params.sessionId as string },
     orderBy: { timestamp: 'asc' },
   });
-
   res.json({ data: messages });
 }));
 
-// Send a message with AI response
-chatRouter.post('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
+// Send a message in a session
+chatRouter.post('/sessions/:sessionId/messages', asyncHandler(async (req: Request, res: Response) => {
   const { message, mentions } = req.body;
-  const { threatModelId } = req.params as { threatModelId: string };
+  const { sessionId } = req.params as { sessionId: string };
+
+  // Get the session to find threatModelId
+  const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+
+  const { threatModelId } = session;
 
   // Save user message
   const userMessage = await prisma.chatMessage.create({
-    data: {
-      role: 'user',
-      content: message,
-      threatModelId,
-    },
+    data: { role: 'user', content: message, threatModelId, sessionId },
   });
 
-  // Get chat history for context
+  // Get session chat history for context
   const history = await prisma.chatMessage.findMany({
-    where: { threatModelId },
+    where: { sessionId },
     orderBy: { timestamp: 'asc' },
     take: 20,
   });
+
+  // Auto-title: if this is the first message, set session title from the message
+  const msgCount = await prisma.chatMessage.count({ where: { sessionId, role: 'user' } });
+  if (msgCount === 1) {
+    const autoTitle = message.length > 50 ? message.slice(0, 47) + '...' : message;
+    await prisma.chatSession.update({ where: { id: sessionId }, data: { title: autoTitle } });
+  }
 
   let aiResponse: string;
   try {
@@ -87,12 +137,22 @@ chatRouter.post('/:threatModelId', asyncHandler(async (req: Request, res: Respon
   }
 
   const assistantMessage = await prisma.chatMessage.create({
-    data: {
-      role: 'assistant',
-      content: aiResponse,
-      threatModelId,
-    },
+    data: { role: 'assistant', content: aiResponse, threatModelId, sessionId },
   });
 
+  // Touch session updatedAt
+  await prisma.chatSession.update({ where: { id: sessionId }, data: {} });
+
   res.json({ data: { userMessage, assistantMessage } });
+}));
+
+// --- Legacy: flat message list (for backwards compat) ---
+
+// Get all chat history for a threat model (across all sessions)
+chatRouter.get('/:threatModelId', asyncHandler(async (req: Request, res: Response) => {
+  const messages = await prisma.chatMessage.findMany({
+    where: { threatModelId: req.params.threatModelId as string },
+    orderBy: { timestamp: 'asc' },
+  });
+  res.json({ data: messages });
 }));

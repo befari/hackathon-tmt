@@ -138,12 +138,21 @@ export interface Review {
   comments?: Comment[];
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  threatModelId: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
   threatModelId: string;
+  sessionId?: string;
 }
 
 // ==================== API Types ====================
