@@ -68,15 +68,117 @@ const chatTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'update_component',
-      description: 'Update a DFD component\'s description.',
+      name: 'create_diagram',
+      description: 'Create a new DFD diagram in the threat model.',
       parameters: {
         type: 'object',
         properties: {
-          componentName: { type: 'string', description: 'The name of the component to update' },
+          name: { type: 'string', description: 'Name for the diagram' },
+          description: { type: 'string', description: 'Description of what the diagram represents' },
+        },
+        required: ['name'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_component',
+      description: 'Create a new DFD component (process, data store, external entity, or trust boundary) in a diagram.',
+      parameters: {
+        type: 'object',
+        properties: {
+          diagramName: { type: 'string', description: 'Name of the diagram to add the component to' },
+          name: { type: 'string', description: 'Name for the component' },
+          type: { type: 'string', enum: ['PROCESS', 'DATA_STORE', 'EXTERNAL_ENTITY', 'TRUST_BOUNDARY'], description: 'Component type' },
+          description: { type: 'string', description: 'Description of the component' },
+          positionX: { type: 'number', description: 'X position on canvas (default: auto-layout)' },
+          positionY: { type: 'number', description: 'Y position on canvas (default: auto-layout)' },
+        },
+        required: ['diagramName', 'name', 'type'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_component',
+      description: 'Update an existing DFD component\'s name, description, or type.',
+      parameters: {
+        type: 'object',
+        properties: {
+          componentName: { type: 'string', description: 'Current name of the component to update' },
+          name: { type: 'string', description: 'New name for the component' },
           description: { type: 'string', description: 'Updated component description' },
+          type: { type: 'string', enum: ['PROCESS', 'DATA_STORE', 'EXTERNAL_ENTITY', 'TRUST_BOUNDARY'], description: 'Updated component type' },
         },
         required: ['componentName'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_component',
+      description: 'Delete a DFD component by name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          componentName: { type: 'string', description: 'Name of the component to delete' },
+        },
+        required: ['componentName'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_data_flow',
+      description: 'Create a data flow (connection) between two components in a diagram.',
+      parameters: {
+        type: 'object',
+        properties: {
+          diagramName: { type: 'string', description: 'Name of the diagram containing both components' },
+          sourceName: { type: 'string', description: 'Name of the source component' },
+          targetName: { type: 'string', description: 'Name of the target component' },
+          label: { type: 'string', description: 'Label for the data flow (e.g. "HTTP Request", "SQL Query")' },
+          protocol: { type: 'string', description: 'Protocol used (e.g. "HTTPS", "TCP", "gRPC")' },
+          dataClassification: { type: 'string', description: 'Classification of data (e.g. "Confidential", "Public")' },
+          crossesTrustBoundary: { type: 'boolean', description: 'Whether the flow crosses a trust boundary' },
+        },
+        required: ['diagramName', 'sourceName', 'targetName', 'label'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_data_flow',
+      description: 'Update an existing data flow\'s properties.',
+      parameters: {
+        type: 'object',
+        properties: {
+          flowLabel: { type: 'string', description: 'Current label of the data flow to update' },
+          label: { type: 'string', description: 'New label for the data flow' },
+          protocol: { type: 'string', description: 'Updated protocol' },
+          dataClassification: { type: 'string', description: 'Updated data classification' },
+          crossesTrustBoundary: { type: 'boolean', description: 'Whether the flow crosses a trust boundary' },
+        },
+        required: ['flowLabel'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_data_flow',
+      description: 'Delete a data flow by its label.',
+      parameters: {
+        type: 'object',
+        properties: {
+          flowLabel: { type: 'string', description: 'Label of the data flow to delete' },
+        },
+        required: ['flowLabel'],
       },
     },
   },
@@ -111,6 +213,45 @@ async function executeTool(
     return `Successfully updated T-${args.threatNumber} (${fields}). Current state: title="${updated.title}", status=${updated.status}, severity=${updated.severity}, mitigation="${updated.mitigationNotes || 'none'}"`;
   }
 
+  if (name === 'create_diagram') {
+    const existing = await prisma.diagram.count({ where: { threatModelId } });
+    const diagram = await prisma.diagram.create({
+      data: {
+        name: args.name,
+        description: args.description || '',
+        order: existing,
+        threatModelId,
+      },
+    });
+    return `Created diagram "${diagram.name}" (id: ${diagram.id}).`;
+  }
+
+  if (name === 'create_component') {
+    const diagram = await prisma.diagram.findFirst({
+      where: { threatModelId, name: { equals: args.diagramName, mode: 'insensitive' } },
+    });
+    if (!diagram) return `Error: Diagram "${args.diagramName}" not found.`;
+
+    // Auto-layout: spread components in a grid if no position given
+    const count = await prisma.component.count({ where: { diagramId: diagram.id } });
+    const col = count % 4;
+    const row = Math.floor(count / 4);
+    const posX = args.positionX ?? 100 + col * 250;
+    const posY = args.positionY ?? 100 + row * 200;
+
+    const component = await prisma.component.create({
+      data: {
+        name: args.name,
+        type: args.type,
+        description: args.description || '',
+        positionX: posX,
+        positionY: posY,
+        diagramId: diagram.id,
+      },
+    });
+    return `Created ${args.type} "${component.name}" in diagram "${args.diagramName}" at (${posX}, ${posY}).`;
+  }
+
   if (name === 'update_component') {
     const component = await prisma.component.findFirst({
       where: {
@@ -121,7 +262,9 @@ async function executeTool(
     if (!component) return `Error: Component "${args.componentName}" not found.`;
 
     const updateData: Record<string, any> = {};
+    if (args.name !== undefined) updateData.name = args.name;
     if (args.description !== undefined) updateData.description = args.description;
+    if (args.type !== undefined) updateData.type = args.type;
 
     if (Object.keys(updateData).length === 0) return 'No fields to update were provided.';
 
@@ -130,6 +273,83 @@ async function executeTool(
       data: updateData,
     });
     return `Successfully updated component "${args.componentName}".`;
+  }
+
+  if (name === 'delete_component') {
+    const component = await prisma.component.findFirst({
+      where: {
+        diagram: { threatModelId },
+        name: { equals: args.componentName, mode: 'insensitive' },
+      },
+    });
+    if (!component) return `Error: Component "${args.componentName}" not found.`;
+
+    await prisma.component.delete({ where: { id: component.id } });
+    return `Deleted component "${args.componentName}".`;
+  }
+
+  if (name === 'create_data_flow') {
+    const diagram = await prisma.diagram.findFirst({
+      where: { threatModelId, name: { equals: args.diagramName, mode: 'insensitive' } },
+      include: { components: true },
+    });
+    if (!diagram) return `Error: Diagram "${args.diagramName}" not found.`;
+
+    const source = diagram.components.find(
+      (c) => c.name.toLowerCase() === args.sourceName.toLowerCase()
+    );
+    const target = diagram.components.find(
+      (c) => c.name.toLowerCase() === args.targetName.toLowerCase()
+    );
+    if (!source) return `Error: Source component "${args.sourceName}" not found in diagram "${args.diagramName}".`;
+    if (!target) return `Error: Target component "${args.targetName}" not found in diagram "${args.diagramName}".`;
+
+    const flow = await prisma.dataFlow.create({
+      data: {
+        label: args.label,
+        protocol: args.protocol || null,
+        dataClassification: args.dataClassification || null,
+        crossesTrustBoundary: args.crossesTrustBoundary ?? false,
+        sourceId: source.id,
+        targetId: target.id,
+        diagramId: diagram.id,
+      },
+    });
+    return `Created data flow "${flow.label}" from "${args.sourceName}" to "${args.targetName}".`;
+  }
+
+  if (name === 'update_data_flow') {
+    const flow = await prisma.dataFlow.findFirst({
+      where: {
+        diagram: { threatModelId },
+        label: { equals: args.flowLabel, mode: 'insensitive' },
+      },
+    });
+    if (!flow) return `Error: Data flow "${args.flowLabel}" not found.`;
+
+    const updateData: Record<string, any> = {};
+    if (args.label !== undefined) updateData.label = args.label;
+    if (args.protocol !== undefined) updateData.protocol = args.protocol;
+    if (args.dataClassification !== undefined) updateData.dataClassification = args.dataClassification;
+    if (args.crossesTrustBoundary !== undefined) updateData.crossesTrustBoundary = args.crossesTrustBoundary;
+
+    if (Object.keys(updateData).length === 0) return 'No fields to update were provided.';
+
+    await prisma.dataFlow.update({ where: { id: flow.id }, data: updateData });
+    return `Successfully updated data flow "${args.flowLabel}".`;
+  }
+
+  if (name === 'delete_data_flow') {
+    const flow = await prisma.dataFlow.findFirst({
+      where: {
+        diagram: { threatModelId },
+        label: { equals: args.flowLabel, mode: 'insensitive' },
+      },
+    });
+    if (!flow) return `Error: Data flow "${args.flowLabel}" not found.`;
+
+    await prisma.dataFlow.delete({ where: { id: flow.id } });
+    return `Deleted data flow "${args.flowLabel}".`;
   }
 
   return `Unknown tool: ${name}`;
@@ -224,7 +444,17 @@ ${mentionContext}
 
 When the user references threats by number (e.g. T-1, T-2), use the threat inventory above to identify the correct threat. Help the user understand the architecture, threats, and security posture. Be specific and reference actual components and data flows when possible. If you don't know something, say so rather than guessing.
 
-You have tools available to UPDATE threats and components. When the user asks you to update, edit, or change a threat's mitigation notes, status, severity, title, or description, use the update_threat tool. When asked to update a component's description, use update_component. Always confirm what you changed after making updates.`,
+You have tools to CREATE and MODIFY the threat model:
+- update_threat: Change a threat's mitigation, status, severity, title, or description by T-number
+- create_diagram: Create a new DFD diagram
+- create_component: Add a process, data store, external entity, or trust boundary to a diagram
+- update_component: Rename or update a component's description/type
+- delete_component: Remove a component from a diagram
+- create_data_flow: Add a data flow connection between two components
+- update_data_flow: Change a data flow's label, protocol, classification, or trust boundary crossing
+- delete_data_flow: Remove a data flow
+
+When the user asks you to build, create, edit, or modify DFDs, threats, or components, use the appropriate tools. You can call multiple tools to build an entire diagram. Always confirm what you created or changed after making updates.`,
     },
     ...chatHistory.slice(-10).map((m) => ({
       role: m.role as 'user' | 'assistant',
