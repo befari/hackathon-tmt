@@ -204,6 +204,13 @@ export function ThreatList() {
     loadThreats();
   }, [loadThreats]);
 
+  // Re-fetch when AI chat modifies data
+  useEffect(() => {
+    const handler = () => loadThreats();
+    window.addEventListener('chat-action-executed', handler);
+    return () => window.removeEventListener('chat-action-executed', handler);
+  }, [loadThreats]);
+
   // Auto-scroll to highlighted threat and expand it
   useEffect(() => {
     if (highlightId && !loading && threats.length > 0) {

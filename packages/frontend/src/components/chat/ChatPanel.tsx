@@ -297,6 +297,8 @@ export function ChatPanel() {
       });
       const { data } = await res.json();
       setMessages((prev) => [...prev, data.userMessage, data.assistantMessage]);
+      // Signal other panels to refresh — AI may have modified threats/components
+      window.dispatchEvent(new CustomEvent('chat-action-executed'));
     } catch (err) {
       console.error('Failed to send message:', err);
     } finally {
