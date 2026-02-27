@@ -40,6 +40,11 @@ import {
   Divider,
   Dropdown,
   Option,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from '@fluentui/react-components';
 import {
   ArrowUpload20Regular,
@@ -52,6 +57,7 @@ import {
   Save20Regular,
   Checkmark20Regular,
   Delete16Regular,
+  MoreHorizontal20Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -95,16 +101,7 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     flexShrink: 0,
-    overflowX: 'auto' as const,
-    overflowY: 'hidden' as const,
-    scrollbarWidth: 'thin' as const,
-    '&::-webkit-scrollbar': {
-      height: '4px',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: tokens.colorNeutralStroke1,
-      borderRadius: '2px',
-    },
+    overflow: 'hidden' as const,
   },
   container: {
     width: '100%',
@@ -319,6 +316,7 @@ export function DfdCanvas() {
   const [newDiagramName, setNewDiagramName] = useState('');
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
+  const MAX_VISIBLE_TABS = 8;
 
   // Refs to always have latest state (avoids stale closures in callbacks)
   const nodesRef = useRef(nodes);
@@ -849,14 +847,45 @@ export function DfdCanvas() {
           selectedValue={selectedDiagramId ?? undefined}
           onTabSelect={handleTabSelect}
           size="small"
-          style={{ flexShrink: 0 }}
+          style={{ flexShrink: 1, minWidth: 0 }}
         >
-          {diagrams.map((d) => (
+          {diagrams.slice(0, MAX_VISIBLE_TABS).map((d) => (
             <Tab key={d.id} value={d.id} aria-label={`Diagram: ${d.name}`} style={{ whiteSpace: 'nowrap' }}>
               {d.name}
             </Tab>
           ))}
         </TabList>
+        {diagrams.length > MAX_VISIBLE_TABS && (
+          <Menu>
+            <MenuTrigger>
+              <Button
+                appearance="subtle"
+                icon={<MoreHorizontal20Regular />}
+                size="small"
+                aria-label={`${diagrams.length - MAX_VISIBLE_TABS} more diagrams`}
+                title="More diagrams"
+              />
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                {diagrams.slice(MAX_VISIBLE_TABS).map((d) => (
+                  <MenuItem
+                    key={d.id}
+                    onClick={() => {
+                      selectDiagram(d.id, diagrams, commentCounts);
+                      setSelectedNode(null);
+                      setSelectedEdge(null);
+                      setShowDiagramPanel(true);
+                    }}
+                  >
+                    {d.name}
+                    {d.id === selectedDiagramId && ' ✓'}
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        )}
         <Dialog
           open={newDiagramDialogOpen}
           onOpenChange={(_e, data) => setNewDiagramDialogOpen(data.open)}

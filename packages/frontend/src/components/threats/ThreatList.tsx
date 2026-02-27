@@ -6,7 +6,6 @@ import {
   Text,
   Badge,
   Card,
-  CardHeader,
   Dropdown,
   Option,
   Spinner,
@@ -41,7 +40,7 @@ import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
 const useStyles = makeStyles({
   container: {
     padding: '24px 32px',
-    maxWidth: '1000px',
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   header: {
@@ -160,7 +159,7 @@ export function ThreatList() {
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [newThreat, setNewThreat] = useState({ title: '', description: '', strideCategory: 'SPOOFING', severity: 'MEDIUM' });
-  const [editOpen, setEditOpen] = useState(false);
+  const [editThreatId, setEditThreatId] = useState<string | null>(null);
   const [editThreat, setEditThreat] = useState<{ id: string; title: string; description: string; strideCategory: string; severity: string; mitigationNotes: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [aiGenerationId, setAiGenerationId] = useState<string | null>(null);
@@ -312,7 +311,7 @@ export function ThreatList() {
         severity: editThreat.severity,
         mitigationNotes: editThreat.mitigationNotes,
       });
-      setEditOpen(false);
+      setEditThreatId(null);
       setEditThreat(null);
       loadThreats();
     } catch (err) {
@@ -462,133 +461,150 @@ export function ThreatList() {
         </div>
       ) : (
         <div className={styles.list}>
-          {filteredThreats.map((threat) => (
+          {filteredThreats.map((threat) => {
+            const isEditing = editThreatId === threat.id;
+            return (
             <Card
               key={threat.id}
               className={styles.card}
               ref={threat.id === highlightId ? highlightRef : undefined}
               style={threat.id === highlightId ? { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' } : undefined}
             >
-              <CardHeader
-                header={<Text weight="semibold">{threat.title}</Text>}
-                description={threat.description.substring(0, 200)}
-              />
-              <div className={styles.cardBody}>
-                <div className={styles.badges}>
-                  <Badge color={severityColors[threat.severity] || 'informative'}>
-                    {threat.severity}
-                  </Badge>
-                  <Badge appearance="outline">
-                    {strideLabels[threat.strideCategory] || threat.strideCategory}
-                  </Badge>
-                  <Badge
-                    appearance="outline"
-                    color={threat.status === 'OPEN' ? 'danger' : 'success'}
-                  >
-                    {threat.status.replace('_', ' ')}
-                  </Badge>
-                  {threat.aiGenerated && (
-                    <Badge appearance="outline" color="informative">
-                      AI Generated
-                    </Badge>
-                  )}
-                  {(threat as any).component && (
-                    <Badge appearance="outline" color="brand">
-                      📦 {(threat as any).component.name}
-                    </Badge>
-                  )}
-                  {(threat as any).dataFlow && (
-                    <Badge appearance="outline" color="brand">
-                      🔗 {(threat as any).dataFlow.label}
-                    </Badge>
-                  )}
-                  {(threat as any).dataFlow?.diagram && (
-                    <Badge appearance="outline" color="subtle">
-                      📄 {(threat as any).dataFlow.diagram.name}
-                    </Badge>
-                  )}
-                  {((threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId) && (
-                    <Button
-                      size="small"
-                      appearance="subtle"
-                      icon={<Eye20Regular />}
-                      aria-label={`View ${threat.title} in DFD`}
-                      title="View in DFD"
-                      onClick={() => {
-                        const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
-                        const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
-                        navigate(`/model/${id}?diagram=${diagId}${focusId ? `&focus=${focusId}` : ''}`);
-                      }}
+              <div className={styles.cardBody} style={{ padding: '16px' }}>
+                {/* Header row: title + badges + actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {isEditing ? (
+                      <Input
+                        value={editThreat?.title || ''}
+                        onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, title: d.value } : null)}
+                        style={{ width: '100%', fontWeight: 600 }}
+                        aria-label="Threat title"
+                      />
+                    ) : (
+                      <Text weight="semibold" size={400}>{threat.title}</Text>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    {((threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId) && (
+                      <Button size="small" appearance="subtle" icon={<Eye20Regular />}
+                        aria-label={`View ${threat.title} in DFD`} title="View in DFD"
+                        onClick={() => {
+                          const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
+                          const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
+                          navigate(`/model/${id}?diagram=${diagId}${focusId ? `&focus=${focusId}` : ''}`);
+                        }}
+                      />
+                    )}
+                    {isEditing ? (
+                      <>
+                        <Button size="small" appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
+                        <Button size="small" appearance="secondary" onClick={() => { setEditThreatId(null); setEditThreat(null); }}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                        aria-label={`Edit ${threat.title}`} title="Edit threat"
+                        onClick={() => {
+                          setEditThreatId(threat.id);
+                          setEditThreat({
+                            id: threat.id, title: threat.title, description: threat.description,
+                            strideCategory: threat.strideCategory, severity: threat.severity,
+                            mitigationNotes: (threat as any).mitigationNotes || '',
+                          });
+                        }}
+                      />
+                    )}
+                    <Button size="small" appearance="subtle" icon={<Delete20Regular />}
+                      style={{ color: tokens.colorPaletteRedForeground1 }}
+                      aria-label={`Delete ${threat.title}`} title="Delete threat"
+                      onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
+                    />
+                    <Button size="small" appearance="subtle"
+                      icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
+                      aria-label={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
+                      title={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
+                      onClick={() => toggleComments(threat.id)}
                     >
-                      View in DFD
+                      <Comment20Regular style={{ marginRight: '4px' }} />
+                      {commentCounts[threat.id] || 0}
                     </Button>
-                  )}
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    icon={<Edit20Regular />}
-                    aria-label={`Edit ${threat.title}`}
-                    title="Edit threat"
-                    onClick={() => {
-                      setEditThreat({
-                        id: threat.id,
-                        title: threat.title,
-                        description: threat.description,
-                        strideCategory: threat.strideCategory,
-                        severity: threat.severity,
-                        mitigationNotes: (threat as any).mitigationNotes || '',
-                      });
-                      setEditOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    style={{ color: tokens.colorPaletteRedForeground1 }}
-                    icon={<Delete20Regular />}
-                    aria-label={`Delete ${threat.title}`}
-                    title="Delete threat"
-                    onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
-                    aria-label={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
-                    title={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
-                    onClick={() => toggleComments(threat.id)}
-                  >
-                    <Comment20Regular style={{ marginRight: '4px' }} />
-                    {commentCounts[threat.id] || 0}
-                  </Button>
+                  </div>
                 </div>
 
-                {/* Inline status & severity editing */}
+                {/* Badges row */}
+                <div className={styles.badges}>
+                  <Badge color={severityColors[threat.severity] || 'informative'}>{threat.severity}</Badge>
+                  <Badge appearance="outline">{strideLabels[threat.strideCategory] || threat.strideCategory}</Badge>
+                  <Badge appearance="outline" color={threat.status === 'OPEN' ? 'danger' : 'success'}>
+                    {threat.status.replace('_', ' ')}
+                  </Badge>
+                  {threat.aiGenerated && <Badge appearance="outline" color="informative">AI Generated</Badge>}
+                  {(threat as any).component && <Badge appearance="outline" color="brand">📦 {(threat as any).component.name}</Badge>}
+                  {(threat as any).dataFlow && <Badge appearance="outline" color="brand">🔗 {(threat as any).dataFlow.label}</Badge>}
+                  {(threat as any).dataFlow?.diagram && <Badge appearance="outline" color="subtle">📄 {(threat as any).dataFlow.diagram.name}</Badge>}
+                </div>
+
+                {/* Description */}
+                <div style={{ marginTop: '12px' }}>
+                  <Text size={200} weight="semibold" style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: '4px' }}>
+                    Description
+                  </Text>
+                  {isEditing ? (
+                    <Textarea
+                      value={editThreat?.description || ''}
+                      onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, description: d.value } : null)}
+                      rows={3} style={{ width: '100%' }}
+                      aria-label="Threat description"
+                    />
+                  ) : (
+                    <Text size={300} style={{ whiteSpace: 'pre-wrap' }}>{threat.description}</Text>
+                  )}
+                </div>
+
+                {/* Mitigation */}
+                <div style={{ marginTop: '12px' }}>
+                  <Text size={200} weight="semibold" style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: '4px' }}>
+                    Mitigation
+                  </Text>
+                  {isEditing ? (
+                    <Textarea
+                      value={editThreat?.mitigationNotes || ''}
+                      onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, mitigationNotes: d.value } : null)}
+                      placeholder="Describe mitigation steps..."
+                      rows={2} style={{ width: '100%' }}
+                      aria-label="Mitigation notes"
+                    />
+                  ) : (
+                    <Text size={300} style={{ whiteSpace: 'pre-wrap', fontStyle: (threat as any).mitigationNotes ? 'normal' : 'italic', opacity: (threat as any).mitigationNotes ? 1 : 0.5 }}>
+                      {(threat as any).mitigationNotes || 'No mitigation specified'}
+                    </Text>
+                  )}
+                </div>
+
+                {/* Inline dropdowns for status, severity, STRIDE (editing) */}
                 <div className={styles.editRow}>
-                  <Text size={200}>Status:</Text>
+                  <Text size={200} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>Status:</Text>
                   <Dropdown
                     size="small"
-                    value={threat.status.replace('_', ' ')}
+                    value={isEditing ? (editThreat?.severity ? threat.status.replace('_', ' ') : '') : threat.status.replace('_', ' ')}
                     selectedOptions={[threat.status]}
                     onOptionSelect={(_e, d) => handleStatusChange(threat.id, d.optionValue as string)}
                     style={{ minWidth: '140px' }}
+                    aria-label="Threat status"
                   >
                     <Option value="OPEN">Open</Option>
                     <Option value="MITIGATED">Mitigated</Option>
                     <Option value="ACCEPTED">Accepted</Option>
                     <Option value="OUT_OF_SCOPE">Out of Scope</Option>
                   </Dropdown>
-                  <Text size={200}>Severity:</Text>
+                  <Text size={200} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>Severity:</Text>
                   <Dropdown
                     size="small"
                     value={threat.severity}
                     selectedOptions={[threat.severity]}
                     onOptionSelect={(_e, d) => handleSeverityChange(threat.id, d.optionValue as string)}
                     style={{ minWidth: '120px' }}
+                    aria-label="Threat severity"
                   >
                     <Option value="CRITICAL">Critical</Option>
                     <Option value="HIGH">High</Option>
@@ -596,6 +612,26 @@ export function ThreatList() {
                     <Option value="LOW">Low</Option>
                     <Option value="INFO">Info</Option>
                   </Dropdown>
+                  {isEditing && (
+                    <>
+                      <Text size={200} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>STRIDE:</Text>
+                      <Dropdown
+                        size="small"
+                        value={strideLabels[editThreat?.strideCategory || ''] || ''}
+                        selectedOptions={[editThreat?.strideCategory || '']}
+                        onOptionSelect={(_e, d) => setEditThreat(prev => prev ? { ...prev, strideCategory: d.optionValue as string } : null)}
+                        style={{ minWidth: '160px' }}
+                        aria-label="STRIDE category"
+                      >
+                        <Option value="SPOOFING">Spoofing</Option>
+                        <Option value="TAMPERING">Tampering</Option>
+                        <Option value="REPUDIATION">Repudiation</Option>
+                        <Option value="INFO_DISCLOSURE">Info Disclosure</Option>
+                        <Option value="DENIAL_OF_SERVICE">Denial of Service</Option>
+                        <Option value="ELEVATION_OF_PRIVILEGE">Elevation of Privilege</Option>
+                      </Dropdown>
+                    </>
+                  )}
                 </div>
 
                 {/* Expandable comment section */}
@@ -655,66 +691,11 @@ export function ThreatList() {
                 )}
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Edit Threat Dialog */}
-      <Dialog open={editOpen} onOpenChange={(_e, data) => { if (!data.open) { setEditOpen(false); setEditThreat(null); } }}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Edit Threat</DialogTitle>
-            <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <Input
-                  placeholder="Threat title"
-                  value={editThreat?.title || ''}
-                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, title: d.value } : null)}
-                />
-                <Textarea
-                  placeholder="Description of the threat..."
-                  value={editThreat?.description || ''}
-                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, description: d.value } : null)}
-                  rows={3}
-                />
-                <Dropdown
-                  value={strideLabels[editThreat?.strideCategory || ''] || editThreat?.strideCategory || ''}
-                  selectedOptions={[editThreat?.strideCategory || '']}
-                  onOptionSelect={(_e, d) => setEditThreat(prev => prev ? { ...prev, strideCategory: d.optionValue as string } : null)}
-                >
-                  <Option value="SPOOFING">Spoofing</Option>
-                  <Option value="TAMPERING">Tampering</Option>
-                  <Option value="REPUDIATION">Repudiation</Option>
-                  <Option value="INFO_DISCLOSURE">Info Disclosure</Option>
-                  <Option value="DENIAL_OF_SERVICE">Denial of Service</Option>
-                  <Option value="ELEVATION_OF_PRIVILEGE">Elevation of Privilege</Option>
-                </Dropdown>
-                <Dropdown
-                  value={editThreat?.severity || ''}
-                  selectedOptions={[editThreat?.severity || '']}
-                  onOptionSelect={(_e, d) => setEditThreat(prev => prev ? { ...prev, severity: d.optionValue as string } : null)}
-                >
-                  <Option value="CRITICAL">Critical</Option>
-                  <Option value="HIGH">High</Option>
-                  <Option value="MEDIUM">Medium</Option>
-                  <Option value="LOW">Low</Option>
-                  <Option value="INFO">Info</Option>
-                </Dropdown>
-                <Textarea
-                  placeholder="Mitigation notes..."
-                  value={editThreat?.mitigationNotes || ''}
-                  onChange={(_e, d) => setEditThreat(prev => prev ? { ...prev, mitigationNotes: d.value } : null)}
-                  rows={3}
-                />
-              </div>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => { setEditOpen(false); setEditThreat(null); }}>Cancel</Button>
-              <Button appearance="primary" onClick={handleEditThreat} disabled={!editThreat?.title.trim()}>Save</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
       <Dialog
         open={!!deleteThreatTarget}
         onOpenChange={(_e, data) => { if (!data.open) setDeleteThreatTarget(null); }}

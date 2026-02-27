@@ -32,7 +32,7 @@ import type { Review, Comment, Threat, Component, DataFlow } from '@superior-tmt
 const useStyles = makeStyles({
   container: {
     padding: '24px 32px',
-    maxWidth: '1000px',
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   header: {
