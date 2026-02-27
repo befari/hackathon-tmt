@@ -907,6 +907,7 @@ export function DfdCanvas() {
                   value={newDiagramName}
                   onChange={(_e, d) => setNewDiagramName(d.value)}
                   style={{ width: '100%', marginTop: '8px' }}
+                  aria-label="New diagram name"
                 />
               </DialogContent>
               <DialogActions>
@@ -1010,6 +1011,7 @@ export function DfdCanvas() {
                   accept=".zip"
                   onChange={handleUpload}
                   style={{ display: 'none' }}
+                  aria-label="Upload source code zip file"
                 />
                 <Button
                   appearance="primary"
@@ -1129,6 +1131,7 @@ export function DfdCanvas() {
               onChange={(_e, d) => setNewCommentText(d.value)}
               style={{ width: '100%' }}
               rows={2}
+              aria-label="Add comment"
             />
             <Button
               appearance="primary"
@@ -1263,17 +1266,20 @@ export function DfdCanvas() {
                     placeholder="Threat title"
                     value={newThreat.title}
                     onChange={(_e, d) => setNewThreat((p) => ({ ...p, title: d.value }))}
+                    aria-label="Threat title"
                   />
                   <Textarea
                     placeholder="Description of the threat..."
                     value={newThreat.description}
                     onChange={(_e, d) => setNewThreat((p) => ({ ...p, description: d.value }))}
                     rows={3}
+                    aria-label="Threat description"
                   />
                   <Dropdown
                     value={newThreat.strideCategory}
                     selectedOptions={[newThreat.strideCategory]}
                     onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, strideCategory: d.optionValue as string }))}
+                    aria-label="STRIDE category"
                   >
                     <Option value="SPOOFING">Spoofing</Option>
                     <Option value="TAMPERING">Tampering</Option>
@@ -1286,6 +1292,7 @@ export function DfdCanvas() {
                     value={newThreat.severity}
                     selectedOptions={[newThreat.severity]}
                     onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, severity: d.optionValue as string }))}
+                    aria-label="Threat severity"
                   >
                     <Option value="CRITICAL">Critical</Option>
                     <Option value="HIGH">High</Option>

@@ -406,17 +406,20 @@ export function ThreatList() {
                       placeholder="Threat title"
                       value={newThreat.title}
                       onChange={(_e, d) => setNewThreat((p) => ({ ...p, title: d.value }))}
+                      aria-label="Threat title"
                     />
                     <Textarea
                       placeholder="Description of the threat..."
                       value={newThreat.description}
                       onChange={(_e, d) => setNewThreat((p) => ({ ...p, description: d.value }))}
                       rows={3}
+                      aria-label="Threat description"
                     />
                     <Dropdown
                       value={strideLabels[newThreat.strideCategory] || newThreat.strideCategory}
                       selectedOptions={[newThreat.strideCategory]}
                       onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, strideCategory: d.optionValue as string }))}
+                      aria-label="STRIDE category"
                     >
                       <Option value="SPOOFING">Spoofing</Option>
                       <Option value="TAMPERING">Tampering</Option>
@@ -429,6 +432,7 @@ export function ThreatList() {
                       value={newThreat.severity}
                       selectedOptions={[newThreat.severity]}
                       onOptionSelect={(_e, d) => setNewThreat((p) => ({ ...p, severity: d.optionValue as string }))}
+                      aria-label="Threat severity"
                     >
                       <Option value="CRITICAL">Critical</Option>
                       <Option value="HIGH">High</Option>
@@ -677,6 +681,7 @@ export function ThreatList() {
                         onChange={(_e, d) => setNewCommentText(d.value)}
                         style={{ flex: 1 }}
                         rows={2}
+                        aria-label="Threat comment"
                       />
                       <Button
                         appearance="primary"

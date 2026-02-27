@@ -135,6 +135,7 @@ export function AIRatingWidget({ generationId, onClose }: AIRatingWidgetProps) {
         rows={2}
         resize="vertical"
         style={{ width: '100%' }}
+        aria-label="Feedback comment"
       />
       <div className={styles.actions}>
         <Button appearance="secondary" size="small" onClick={onClose}>

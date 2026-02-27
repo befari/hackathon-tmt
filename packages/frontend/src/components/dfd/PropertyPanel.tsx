@@ -375,6 +375,9 @@ export function PropertyPanel({
               style={{ cursor: 'pointer' }}
               onClick={() => navigateToThreat(t.id)}
               title="Click to view in Threats list"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateToThreat(t.id); } }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text size={200} weight="semibold" block>{t.title}</Text>

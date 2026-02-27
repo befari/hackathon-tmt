@@ -145,6 +145,7 @@ export function ChatPanel() {
           onChange={(_e, d) => setInput(d.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           disabled={sending}
+          aria-label="Type a message"
         />
         <Button
           appearance="primary"

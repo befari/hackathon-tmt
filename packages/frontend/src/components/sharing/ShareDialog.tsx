@@ -149,7 +149,7 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
     <Dialog open={open} onOpenChange={(_e, data) => setOpen(data.open)}>
       <DialogTrigger>
         <Tooltip content="Share" relationship="label">
-          <Button icon={<Share20Regular />} appearance="subtle" size="small">
+          <Button icon={<Share20Regular />} appearance="subtle" size="small" aria-label="Share" title="Share this threat model">
             Share
           </Button>
         </Tooltip>
@@ -165,6 +165,7 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 value={inviteEmail}
                 onChange={(_e, d) => setInviteEmail(d.value)}
                 style={{ flex: 1 }}
+                aria-label="Email address to invite"
               />
               <Dropdown
                 value={inviteRole}
@@ -201,6 +202,8 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                           appearance="subtle"
                           size="small"
                           onClick={() => handleRemoveMember(m.id)}
+                          aria-label="Remove member"
+                          title="Remove member"
                         />
                       )}
                     </div>
@@ -243,6 +246,8 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                   appearance="subtle"
                   size="small"
                   onClick={() => handleCopyLink(link.token)}
+                  aria-label="Copy link"
+                  title="Copy share link"
                 >
                   {copied === link.token ? 'Copied!' : ''}
                 </Button>
@@ -251,6 +256,8 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                   appearance="subtle"
                   size="small"
                   onClick={() => handleDeleteLink(link.id)}
+                  aria-label="Revoke link"
+                  title="Revoke share link"
                 />
               </div>
             ))}

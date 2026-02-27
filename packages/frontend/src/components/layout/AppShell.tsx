@@ -149,6 +149,9 @@ export function AppShell({ children }: AppShellProps) {
               <div
                 className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
                 onClick={() => navigate(item.path)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(item.path); } }}
               >
                 {item.icon}
                 {expanded && <Text size={300}>{item.label}</Text>}

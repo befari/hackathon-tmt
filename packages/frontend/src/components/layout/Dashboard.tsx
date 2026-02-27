@@ -165,6 +165,7 @@ export function Dashboard() {
             accept=".tm7"
             style={{ display: 'none' }}
             onChange={handleImportTm7}
+            aria-label="Import TM7 file"
           />
           <Button
             appearance="secondary"
@@ -189,12 +190,14 @@ export function Dashboard() {
                     placeholder="Threat model name"
                     value={newName}
                     onChange={(_e, d) => setNewName(d.value)}
+                    aria-label="Threat model name"
                   />
                   <Textarea
                     placeholder="Description (optional)"
                     value={newDesc}
                     onChange={(_e, d) => setNewDesc(d.value)}
                     rows={3}
+                    aria-label="Threat model description"
                   />
                 </div>
               </DialogContent>
@@ -225,7 +228,7 @@ export function Dashboard() {
       ) : (
         <div className={styles.grid}>
           {models.map((model) => (
-            <Card key={model.id} className={styles.card} onClick={() => navigate(`/model/${model.id}`)}>
+            <Card key={model.id} className={styles.card} onClick={() => navigate(`/model/${model.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/model/${model.id}`); }}>
               <CardHeader
                 header={<Text weight="semibold">{model.name}</Text>}
                 description={model.description || 'No description'}
@@ -326,12 +329,14 @@ export function Dashboard() {
                   placeholder="Threat model name"
                   value={editModel?.name || ''}
                   onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, name: d.value } : null)}
+                  aria-label="Threat model name"
                 />
                 <Textarea
                   placeholder="Description (optional)"
                   value={editModel?.description || ''}
                   onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, description: d.value } : null)}
                   rows={3}
+                  aria-label="Threat model description"
                 />
               </div>
             </DialogContent>

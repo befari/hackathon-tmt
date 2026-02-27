@@ -257,6 +257,7 @@ export function ReviewPanel() {
                   value={newReviewName}
                   onChange={(_e, d) => setNewReviewName(d.value)}
                   style={{ width: '100%', marginTop: '16px' }}
+                  aria-label="Review name"
                 />
               </DialogContent>
               <DialogActions>
@@ -328,6 +329,7 @@ export function ReviewPanel() {
               value={newCommentBody}
               onChange={(_e, d) => setNewCommentBody(d.value)}
               rows={3}
+              aria-label="Review comment"
             />
             <div className={styles.linkRow}>
               <Text size={200}>Link to:</Text>
