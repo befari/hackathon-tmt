@@ -89,15 +89,6 @@ const useStyles = makeStyles({
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
   },
-  sessionActions: {
-    display: 'flex',
-    gap: '2px',
-    opacity: 0,
-    ':hover > &': { opacity: 1 },
-  },
-  sessionItemHover: {
-    ':hover > span:last-child': { opacity: 1 as any },
-  },
   container: {
     display: 'flex',
     flexDirection: 'column',
@@ -253,7 +244,7 @@ export function ChatPanel() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
   // Message state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -483,10 +474,11 @@ export function ChatPanel() {
               key={s.id}
               className={mergeClasses(
                 styles.sessionItem,
-                styles.sessionItemHover,
                 activeSessionId === s.id && styles.sessionItemActive
               )}
               onClick={() => { setActiveSessionId(s.id); setRenamingId(null); }}
+              onMouseEnter={() => setHoveredSessionId(s.id)}
+              onMouseLeave={() => setHoveredSessionId(null)}
             >
               <Chat20Regular style={{ flexShrink: 0, opacity: 0.6 }} />
               {renamingId === s.id ? (
@@ -524,7 +516,8 @@ export function ChatPanel() {
                       {s._count?.messages ? ` · ${s._count.messages} msgs` : ''}
                     </div>
                   </div>
-                  <span style={{ display: 'flex', gap: '2px', opacity: 0 }}>
+                  {hoveredSessionId === s.id && (
+                    <span style={{ display: 'flex', gap: '2px' }}>
                     <Tooltip content="Rename" relationship="label">
                       <Button
                         appearance="subtle"
@@ -545,7 +538,8 @@ export function ChatPanel() {
                         onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id); }}
                       />
                     </Tooltip>
-                  </span>
+                    </span>
+                  )}
                 </>
               )}
             </div>
