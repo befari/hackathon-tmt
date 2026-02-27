@@ -24,8 +24,9 @@ import {
   MenuList,
   MenuItem,
   Tooltip,
+  Divider,
 } from '@fluentui/react-components';
-import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular } from '@fluentui/react-icons';
+import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular, Info20Regular } from '@fluentui/react-icons';
 import type { ThreatModel } from '@superior-tmt/shared';
 import { api } from '../../api/client';
 import { useToast } from '../shared/ToastContext';
@@ -54,9 +55,16 @@ const useStyles = makeStyles({
   },
   card: {
     cursor: 'pointer',
+    position: 'relative' as const,
     '&:hover': {
       boxShadow: tokens.shadow8,
     },
+  },
+  cardMenu: {
+    position: 'absolute' as const,
+    top: '8px',
+    right: '8px',
+    zIndex: 1,
   },
   cardMeta: {
     display: 'flex',
@@ -67,6 +75,27 @@ const useStyles = makeStyles({
     textAlign: 'center' as const,
     padding: '64px 32px',
     color: tokens.colorNeutralForeground3,
+  },
+  detailSection: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  detailLabel: {
+    fontSize: '12px',
+    fontWeight: 600 as const,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase' as const,
+  },
+  detailValue: {
+    fontSize: '14px',
+    color: tokens.colorNeutralForeground1,
+    whiteSpace: 'pre-wrap' as const,
+  },
+  chipList: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '4px',
   },
 });
 
@@ -83,9 +112,15 @@ export function Dashboard() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [contributeAsRef, setContributeAsRef] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editModel, setEditModel] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [editModel, setEditModel] = useState<{
+    id: string; name: string; description: string;
+    m1Owner: string; devOwners: string[]; assumptions: string; externalDependencies: string;
+  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteModel, setDeleteModel] = useState<{ id: string; name: string } | null>(null);
+  const [detailModel, setDetailModel] = useState<ThreatModel | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [devOwnerInput, setDevOwnerInput] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,8 +164,23 @@ export function Dashboard() {
 
   const handleEditModel = async () => {
     if (!editModel) return;
-    await api.updateThreatModel(editModel.id, { name: editModel.name, description: editModel.description });
-    setModels(prev => prev.map(m => m.id === editModel.id ? { ...m, name: editModel.name, description: editModel.description } : m));
+    await api.updateThreatModel(editModel.id, {
+      name: editModel.name,
+      description: editModel.description,
+      m1Owner: editModel.m1Owner,
+      devOwners: editModel.devOwners,
+      assumptions: editModel.assumptions,
+      externalDependencies: editModel.externalDependencies,
+    });
+    setModels(prev => prev.map(m => m.id === editModel.id ? {
+      ...m,
+      name: editModel.name,
+      description: editModel.description,
+      m1Owner: editModel.m1Owner,
+      devOwners: editModel.devOwners,
+      assumptions: editModel.assumptions,
+      externalDependencies: editModel.externalDependencies,
+    } : m));
     setEditDialogOpen(false);
     setEditModel(null);
   };
@@ -234,48 +284,63 @@ export function Dashboard() {
         <div className={styles.grid}>
           {models.map((model) => (
             <Card key={model.id} className={styles.card} onClick={() => navigate(`/model/${model.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/model/${model.id}`); }}>
+              <div className={styles.cardMenu}>
+                <Menu>
+                  <MenuTrigger>
+                    <Tooltip content="More actions" relationship="label">
+                      <Button
+                        appearance="subtle"
+                        icon={<MoreVertical20Regular />}
+                        size="small"
+                        aria-label="Threat model actions"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Tooltip>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem
+                        icon={<Info20Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDetailModel(model);
+                          setDetailDialogOpen(true);
+                        }}
+                      >
+                        View Details
+                      </MenuItem>
+                      <MenuItem
+                        icon={<Edit20Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditModel({
+                            id: model.id, name: model.name, description: model.description || '',
+                            m1Owner: model.m1Owner || '', devOwners: model.devOwners || [],
+                            assumptions: model.assumptions || '', externalDependencies: model.externalDependencies || '',
+                          });
+                          setDevOwnerInput('');
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        Edit Details
+                      </MenuItem>
+                      <MenuItem
+                        icon={<Delete20Regular />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteModel({ id: model.id, name: model.name });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        Delete
+                      </MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
+              </div>
               <CardHeader
                 header={<Text weight="semibold">{model.name}</Text>}
                 description={model.description || 'No description'}
-                action={
-                  <Menu>
-                    <MenuTrigger>
-                      <Tooltip content="More actions" relationship="label">
-                        <Button
-                          appearance="subtle"
-                          icon={<MoreVertical20Regular />}
-                          size="small"
-                          aria-label="Threat model actions"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </Tooltip>
-                    </MenuTrigger>
-                    <MenuPopover>
-                      <MenuList>
-                        <MenuItem
-                          icon={<Edit20Regular />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditModel({ id: model.id, name: model.name, description: model.description || '' });
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          Edit Details
-                        </MenuItem>
-                        <MenuItem
-                          icon={<Delete20Regular />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteModel({ id: model.id, name: model.name });
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          Delete
-                        </MenuItem>
-                      </MenuList>
-                    </MenuPopover>
-                  </Menu>
-                }
               />
               <div className={styles.cardMeta}>
                 <Badge appearance="outline" color={statusColor[model.status] || 'informative'}>
@@ -344,11 +409,156 @@ export function Dashboard() {
                   rows={3}
                   aria-label="Threat model description"
                 />
+                <Divider />
+                <Input
+                  placeholder="M1 Owner (e.g. John Smith)"
+                  value={editModel?.m1Owner || ''}
+                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, m1Owner: d.value } : null)}
+                  aria-label="M1 Owner"
+                />
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>Dev Owners</Text>
+                  <div className={styles.chipList}>
+                    {editModel?.devOwners?.map((owner, i) => (
+                      <Badge key={i} appearance="filled" color="brand" style={{ cursor: 'pointer' }}
+                        onClick={() => setEditModel(prev => prev ? { ...prev, devOwners: prev.devOwners.filter((_, idx) => idx !== i) } : null)}
+                      >
+                        {owner} ✕
+                      </Badge>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                    <Input
+                      placeholder="Add dev owner..."
+                      value={devOwnerInput}
+                      onChange={(_e, d) => setDevOwnerInput(d.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && devOwnerInput.trim()) {
+                          e.preventDefault();
+                          setEditModel(prev => prev ? { ...prev, devOwners: [...prev.devOwners, devOwnerInput.trim()] } : null);
+                          setDevOwnerInput('');
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                      aria-label="Add dev owner"
+                    />
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      disabled={!devOwnerInput.trim()}
+                      onClick={() => {
+                        if (devOwnerInput.trim()) {
+                          setEditModel(prev => prev ? { ...prev, devOwners: [...prev.devOwners, devOwnerInput.trim()] } : null);
+                          setDevOwnerInput('');
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+                <Divider />
+                <Textarea
+                  placeholder="Assumptions — document key assumptions about the system"
+                  value={editModel?.assumptions || ''}
+                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, assumptions: d.value } : null)}
+                  rows={3}
+                  aria-label="Assumptions"
+                />
+                <Textarea
+                  placeholder="External Dependencies — third-party services, libraries, APIs"
+                  value={editModel?.externalDependencies || ''}
+                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, externalDependencies: d.value } : null)}
+                  rows={3}
+                  aria-label="External Dependencies"
+                />
               </div>
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => { setEditDialogOpen(false); setEditModel(null); }}>Cancel</Button>
               <Button appearance="primary" onClick={handleEditModel} disabled={!editModel?.name.trim()}>Save</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={(_e, data) => { if (!data.open) { setDetailDialogOpen(false); setDetailModel(null); } }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{detailModel?.name || 'Threat Model Details'}</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>Description</span>
+                  <span className={styles.detailValue}>{detailModel?.description || 'No description'}</span>
+                </div>
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>Status</span>
+                  <div>
+                    <Badge appearance="outline" color={statusColor[detailModel?.status || ''] || 'informative'}>
+                      {detailModel?.status}
+                    </Badge>
+                  </div>
+                </div>
+                <Divider />
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>M1 Owner</span>
+                  <span className={styles.detailValue}>{detailModel?.m1Owner || 'Not assigned'}</span>
+                </div>
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>Dev Owners</span>
+                  {detailModel?.devOwners?.length ? (
+                    <div className={styles.chipList}>
+                      {detailModel.devOwners.map((owner, i) => (
+                        <Badge key={i} appearance="filled" color="brand">{owner}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className={styles.detailValue}>None assigned</span>
+                  )}
+                </div>
+                <Divider />
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>Assumptions</span>
+                  <span className={styles.detailValue}>{detailModel?.assumptions || 'None documented'}</span>
+                </div>
+                <div className={styles.detailSection}>
+                  <span className={styles.detailLabel}>External Dependencies</span>
+                  <span className={styles.detailValue}>{detailModel?.externalDependencies || 'None documented'}</span>
+                </div>
+                <Divider />
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <div className={styles.detailSection} style={{ flex: 1 }}>
+                    <span className={styles.detailLabel}>Created</span>
+                    <span className={styles.detailValue}>{detailModel ? new Date(detailModel.createdAt).toLocaleDateString() : ''}</span>
+                  </div>
+                  <div className={styles.detailSection} style={{ flex: 1 }}>
+                    <span className={styles.detailLabel}>Updated</span>
+                    <span className={styles.detailValue}>{detailModel ? new Date(detailModel.updatedAt).toLocaleDateString() : ''}</span>
+                  </div>
+                  <div className={styles.detailSection} style={{ flex: 1 }}>
+                    <span className={styles.detailLabel}>Version</span>
+                    <span className={styles.detailValue}>{detailModel?.version}</span>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => { setDetailDialogOpen(false); setDetailModel(null); }}>Close</Button>
+              <Button appearance="primary" onClick={() => {
+                setDetailDialogOpen(false);
+                if (detailModel) {
+                  setEditModel({
+                    id: detailModel.id, name: detailModel.name, description: detailModel.description || '',
+                    m1Owner: detailModel.m1Owner || '', devOwners: detailModel.devOwners || [],
+                    assumptions: detailModel.assumptions || '', externalDependencies: detailModel.externalDependencies || '',
+                  });
+                  setDevOwnerInput('');
+                  setEditDialogOpen(true);
+                }
+                setDetailModel(null);
+              }}>Edit</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>

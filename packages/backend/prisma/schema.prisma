@@ -80,14 +80,18 @@ model User {
 }
 
 model ThreatModel {
-  id          String      @id @default(uuid())
-  name        String
-  description String?
-  repoUrl     String?
-  version     Int         @default(1)
-  status      ModelStatus @default(DRAFT)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                   String      @id @default(uuid())
+  name                 String
+  description          String?
+  repoUrl              String?
+  m1Owner              String?
+  devOwners            String[]    @default([])
+  assumptions          String?
+  externalDependencies String?
+  version              Int         @default(1)
+  status               ModelStatus @default(DRAFT)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   diagrams       Diagram[]
   threats        Threat[]

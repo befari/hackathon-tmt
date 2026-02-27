@@ -175,7 +175,7 @@ threatModelRouter.get('/:id', asyncHandler(async (req, res) => {
 
 // Update a threat model
 threatModelRouter.patch('/:id', asyncHandler(async (req, res) => {
-  const { name, description, status } = req.body;
+  const { name, description, status, m1Owner, devOwners, assumptions, externalDependencies } = req.body;
 
   const model = await prisma.threatModel.update({
     where: { id: req.params.id as string },
@@ -183,6 +183,10 @@ threatModelRouter.patch('/:id', asyncHandler(async (req, res) => {
       ...(name && { name }),
       ...(description !== undefined && { description }),
       ...(status && { status }),
+      ...(m1Owner !== undefined && { m1Owner }),
+      ...(devOwners !== undefined && { devOwners }),
+      ...(assumptions !== undefined && { assumptions }),
+      ...(externalDependencies !== undefined && { externalDependencies }),
     },
   });
 

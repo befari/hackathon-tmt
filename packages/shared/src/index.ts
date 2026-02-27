@@ -51,6 +51,10 @@ export interface ThreatModel {
   name: string;
   description?: string;
   repoUrl?: string;
+  m1Owner?: string;
+  devOwners?: string[];
+  assumptions?: string;
+  externalDependencies?: string;
   version: number;
   status: ModelStatus;
   createdAt: string;
@@ -167,6 +171,10 @@ export interface UpdateThreatModelRequest {
   name?: string;
   description?: string;
   status?: ModelStatus;
+  m1Owner?: string;
+  devOwners?: string[];
+  assumptions?: string;
+  externalDependencies?: string;
 }
 
 export interface CreateCommentRequest {
