@@ -61,6 +61,8 @@ import {
   ZoomIn20Regular,
   ZoomOut20Regular,
   ZoomFitRegular,
+  LockClosed20Regular,
+  LockOpen20Regular,
 } from '@fluentui/react-icons';
 import { ProcessNode } from './nodes/ProcessNode';
 import { DataStoreNode } from './nodes/DataStoreNode';
@@ -320,6 +322,7 @@ export function DfdCanvas() {
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
   const reactFlowRef = useRef<any>(null);
+  const [locked, setLocked] = useState(false);
   const MAX_VISIBLE_TABS = 8;
 
   // Refs to always have latest state (avoids stale closures in callbacks)
@@ -952,6 +955,9 @@ export function DfdCanvas() {
           snapToGrid={false}
           selectNodesOnDrag={false}
           onInit={(instance) => { reactFlowRef.current = instance; }}
+          nodesDraggable={!locked}
+          nodesConnectable={!locked}
+          elementsSelectable={!locked}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Panel position="bottom-left" style={{ bottom: '10px' }}>
@@ -1019,6 +1025,17 @@ export function DfdCanvas() {
                   onClick={handleSaveAll}
                   aria-label="Save all changes"
                   style={{ backgroundColor: tokens.colorNeutralBackground4, color: saveStatus === 'saved' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground2, minWidth: 'auto' }}
+                />
+              </Tooltip>
+              <div style={{ width: '1px', height: '20px', backgroundColor: tokens.colorNeutralStroke2 }} />
+              <Tooltip content={locked ? 'Unlock canvas — allow editing' : 'Lock canvas — prevent changes'} relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={locked ? <LockClosed20Regular /> : <LockOpen20Regular />}
+                  size="small"
+                  onClick={() => setLocked((l) => !l)}
+                  aria-label={locked ? 'Unlock canvas' : 'Lock canvas'}
+                  style={{ backgroundColor: tokens.colorNeutralBackground4, color: locked ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground2, minWidth: 'auto' }}
                 />
               </Tooltip>
             </div>

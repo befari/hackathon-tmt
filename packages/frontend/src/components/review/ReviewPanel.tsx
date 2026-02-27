@@ -6,7 +6,6 @@ import {
   Text,
   Button,
   Card,
-  CardHeader,
   Badge,
   Textarea,
   Dialog,
@@ -26,6 +25,10 @@ import {
   Add20Regular,
   Checkmark20Regular,
   ArrowReply20Regular,
+  Edit20Regular,
+  Delete20Regular,
+  CheckmarkCircle20Regular,
+  DismissCircle20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
 import type { Review, Comment, Threat, Component, DataFlow } from '@superior-tmt/shared';
@@ -126,6 +129,10 @@ export function ReviewPanel() {
   const [newReviewName, setNewReviewName] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editReviewName, setEditReviewName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // New comment form
   const [newCommentBody, setNewCommentBody] = useState('');
@@ -231,6 +238,45 @@ export function ReviewPanel() {
     return null;
   };
 
+  const handleRenameReview = async (reviewId: string) => {
+    if (!editReviewName.trim()) return;
+    const res = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editReviewName }),
+    });
+    const { data } = await res.json();
+    setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, name: data.name } : r)));
+    setEditingReviewId(null);
+  };
+
+  const handleDeleteReview = async () => {
+    if (!deleteTarget) return;
+    await fetch(`/api/reviews/${deleteTarget.id}`, { method: 'DELETE' });
+    setReviews((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const handleCompleteReview = async (reviewId: string) => {
+    const res = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'COMPLETED' }),
+    });
+    const { data } = await res.json();
+    setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, ...data } : r)));
+  };
+
+  const handleCancelReview = async (reviewId: string) => {
+    const res = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'CANCELLED' }),
+    });
+    const { data } = await res.json();
+    setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, ...data } : r)));
+  };
+
   const statusColor: Record<string, 'warning' | 'success' | 'informative'> = {
     IN_PROGRESS: 'warning',
     COMPLETED: 'success',
@@ -292,17 +338,70 @@ export function ReviewPanel() {
               <Card
                 key={review.id}
                 className={styles.reviewCard}
-                onClick={() => loadReviewComments(review.id)}
+                style={{ padding: '16px' }}
               >
-                <CardHeader
-                  header={<Text weight="semibold">{review.name}</Text>}
-                  description={`Started ${new Date(review.startedAt).toLocaleDateString()}`}
-                  action={
-                    <Badge color={statusColor[review.status] || 'informative'}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => loadReviewComments(review.id)}>
+                    {editingReviewId === review.id ? (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <Input
+                          value={editReviewName}
+                          onChange={(_e, d) => setEditReviewName(d.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenameReview(review.id); if (e.key === 'Escape') setEditingReviewId(null); }}
+                          size="small"
+                          style={{ flex: 1 }}
+                          aria-label="Review name"
+                          autoFocus
+                        />
+                        <Button size="small" appearance="primary" onClick={(e) => { e.stopPropagation(); handleRenameReview(review.id); }}>Save</Button>
+                        <Button size="small" appearance="secondary" onClick={(e) => { e.stopPropagation(); setEditingReviewId(null); }}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Text weight="semibold" size={400}>{review.name}</Text>
+                    )}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+                      <Text size={200} style={{ opacity: 0.7 }}>Started {new Date(review.startedAt).toLocaleDateString()}</Text>
+                      {(review as any).completedAt && (
+                        <Text size={200} style={{ opacity: 0.7 }}>Completed {new Date((review as any).completedAt).toLocaleDateString()}</Text>
+                      )}
+                      <Text size={200} style={{ opacity: 0.7 }}>{(review as any)._count?.comments ?? 0} comments</Text>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0, marginLeft: '12px' }}>
+                    <Badge color={statusColor[review.status] || 'informative'} style={{ whiteSpace: 'nowrap' }}>
                       {review.status.replace('_', ' ')}
                     </Badge>
-                  }
-                />
+                    {review.status === 'IN_PROGRESS' && (
+                      <>
+                        <Tooltip content="Complete review" relationship="label">
+                          <Button size="small" appearance="subtle" icon={<CheckmarkCircle20Regular />}
+                            aria-label="Complete review"
+                            onClick={(e) => { e.stopPropagation(); handleCompleteReview(review.id); }}
+                          />
+                        </Tooltip>
+                        <Tooltip content="Cancel review" relationship="label">
+                          <Button size="small" appearance="subtle" icon={<DismissCircle20Regular />}
+                            aria-label="Cancel review"
+                            onClick={(e) => { e.stopPropagation(); handleCancelReview(review.id); }}
+                          />
+                        </Tooltip>
+                      </>
+                    )}
+                    <Tooltip content="Rename review" relationship="label">
+                      <Button size="small" appearance="subtle" icon={<Edit20Regular />}
+                        aria-label="Rename review"
+                        onClick={(e) => { e.stopPropagation(); setEditingReviewId(review.id); setEditReviewName(review.name); }}
+                      />
+                    </Tooltip>
+                    <Tooltip content="Delete review" relationship="label">
+                      <Button size="small" appearance="subtle" icon={<Delete20Regular />}
+                        aria-label="Delete review"
+                        style={{ color: tokens.colorPaletteRedForeground1 }}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: review.id, name: review.name }); }}
+                      />
+                    </Tooltip>
+                  </div>
+                </div>
               </Card>
             ))
           )}
@@ -494,6 +593,22 @@ export function ReviewPanel() {
           )}
         </>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(_e, data) => { if (!data.open) setDeleteTarget(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Delete Review</DialogTitle>
+            <DialogContent>
+              <Text>Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? All comments in this review will be permanently removed.</Text>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button appearance="primary" style={{ backgroundColor: tokens.colorPaletteRedBackground3 }} onClick={handleDeleteReview}>Delete</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

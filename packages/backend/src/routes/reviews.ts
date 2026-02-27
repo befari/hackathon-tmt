@@ -59,13 +59,14 @@ reviewRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json({ data: review });
 }));
 
-// Update a review (complete, cancel)
+// Update a review (complete, cancel, rename)
 reviewRouter.patch('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { status, reviewerName } = req.body;
+  const { status, reviewerName, name } = req.body;
 
   const review = await prisma.review.update({
     where: { id: req.params.id as string },
     data: {
+      ...(name && { name }),
       ...(status && { status }),
       ...(reviewerName && { reviewerName }),
       ...(status === 'COMPLETED' && { completedAt: new Date() }),
@@ -73,4 +74,11 @@ reviewRouter.patch('/:id', asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.json({ data: review });
+}));
+
+// Delete a review
+reviewRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+  await prisma.comment.deleteMany({ where: { reviewId: req.params.id as string } });
+  await prisma.review.delete({ where: { id: req.params.id as string } });
+  res.json({ data: { id: req.params.id } });
 }));
