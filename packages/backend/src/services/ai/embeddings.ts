@@ -182,6 +182,26 @@ const chatTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'create_threat',
+      description: 'Create a new threat in the threat model. Use this when the user asks you to identify, generate, or add threats.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Short descriptive title for the threat' },
+          description: { type: 'string', description: 'Detailed description of the threat, how it could be exploited, and its impact' },
+          strideCategory: { type: 'string', enum: ['SPOOFING', 'TAMPERING', 'REPUDIATION', 'INFO_DISCLOSURE', 'DENIAL_OF_SERVICE', 'ELEVATION_OF_PRIVILEGE'], description: 'STRIDE category' },
+          severity: { type: 'string', enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'], description: 'Severity level' },
+          mitigationNotes: { type: 'string', description: 'Suggested mitigations or countermeasures' },
+          componentName: { type: 'string', description: 'Name of the DFD component this threat applies to (optional)' },
+          dataFlowLabel: { type: 'string', description: 'Label of the data flow this threat applies to (optional)' },
+        },
+        required: ['title', 'description', 'strideCategory', 'severity'],
+      },
+    },
+  },
 ];
 
 // Execute a tool call and return the result
@@ -352,6 +372,49 @@ async function executeTool(
     return `Deleted data flow "${args.flowLabel}".`;
   }
 
+  if (name === 'create_threat') {
+    // Get next threat number
+    const max = await prisma.threat.aggregate({
+      where: { threatModelId },
+      _max: { number: true },
+    });
+    const nextNumber = (max._max.number || 0) + 1;
+
+    // Optionally link to component or data flow
+    let componentId: string | undefined;
+    let dataFlowId: string | undefined;
+
+    if (args.componentName) {
+      const comp = await prisma.component.findFirst({
+        where: { diagram: { threatModelId }, name: { equals: args.componentName, mode: 'insensitive' } },
+      });
+      if (comp) componentId = comp.id;
+    }
+    if (args.dataFlowLabel) {
+      const flow = await prisma.dataFlow.findFirst({
+        where: { diagram: { threatModelId }, label: { equals: args.dataFlowLabel, mode: 'insensitive' } },
+      });
+      if (flow) dataFlowId = flow.id;
+    }
+
+    const threat = await prisma.threat.create({
+      data: {
+        number: nextNumber,
+        title: args.title,
+        description: args.description,
+        strideCategory: args.strideCategory,
+        severity: args.severity,
+        status: 'OPEN',
+        mitigationNotes: args.mitigationNotes || null,
+        aiGenerated: true,
+        threatModelId,
+        componentId: componentId || null,
+        dataFlowId: dataFlowId || null,
+      },
+    });
+    return `Created T-${nextNumber}: "${threat.title}" [${args.strideCategory}/${args.severity}]${componentId ? ' linked to component' : ''}${dataFlowId ? ' linked to data flow' : ''}`;
+  }
+
   return `Unknown tool: ${name}`;
 }
 
@@ -445,6 +508,7 @@ ${mentionContext}
 When the user references threats by number (e.g. T-1, T-2), use the threat inventory above to identify the correct threat. Help the user understand the architecture, threats, and security posture. Be specific and reference actual components and data flows when possible. If you don't know something, say so rather than guessing.
 
 You have tools to CREATE and MODIFY the threat model:
+- create_threat: Generate a new threat with STRIDE category, severity, description, and optional mitigations. Can link to a specific component or data flow.
 - update_threat: Change a threat's mitigation, status, severity, title, or description by T-number
 - create_diagram: Create a new DFD diagram
 - create_component: Add a process, data store, external entity, or trust boundary to a diagram
@@ -454,7 +518,7 @@ You have tools to CREATE and MODIFY the threat model:
 - update_data_flow: Change a data flow's label, protocol, classification, or trust boundary crossing
 - delete_data_flow: Remove a data flow
 
-When the user asks you to build, create, edit, or modify DFDs, threats, or components, use the appropriate tools. You can call multiple tools to build an entire diagram. Always confirm what you created or changed after making updates.`,
+When the user asks you to identify, generate, or add threats, use create_threat. You can create multiple threats in one response. When generating threats, analyze the DFD architecture to identify realistic threats based on STRIDE methodology. Always confirm what you created or changed after making updates.`,
     },
     ...chatHistory.slice(-10).map((m) => ({
       role: m.role as 'user' | 'assistant',
