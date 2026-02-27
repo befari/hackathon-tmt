@@ -390,12 +390,13 @@ export function ThreatList() {
             icon={<BrainCircuit20Regular />}
             onClick={handleGenerateThreats}
             disabled={generating}
+            title="Auto-generate STRIDE threats using AI"
           >
             {generating ? 'Generating...' : 'Auto-Generate'}
           </Button>
           <Dialog open={createOpen} onOpenChange={(_e, data) => setCreateOpen(data.open)}>
             <DialogTrigger>
-              <Button appearance="primary" icon={<Add20Regular />}>Add Threat</Button>
+              <Button appearance="primary" icon={<Add20Regular />} title="Manually add a new threat">Add Threat</Button>
             </DialogTrigger>
             <DialogSurface>
               <DialogBody>

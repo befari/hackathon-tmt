@@ -167,6 +167,7 @@ export function AppShell({ children }: AppShellProps) {
               appearance="primary"
               size="small"
               onClick={login}
+              title="Sign in with your account"
             >
               {expanded ? 'Sign In' : ''}
             </Button>
@@ -194,6 +195,7 @@ export function AppShell({ children }: AppShellProps) {
                     appearance="subtle"
                     onClick={logout}
                     size="small"
+                    title="Sign out of your account"
                   >
                     Sign Out
                   </Button>

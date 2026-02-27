@@ -177,7 +177,7 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 <Option value="REVIEWER">Reviewer</Option>
                 <Option value="VIEWER">Viewer</Option>
               </Dropdown>
-              <Button icon={<PersonAdd20Regular />} appearance="primary" onClick={handleInvite} disabled={!inviteEmail.trim()}>
+              <Button icon={<PersonAdd20Regular />} appearance="primary" onClick={handleInvite} disabled={!inviteEmail.trim()} title="Send invitation">
                 Invite
               </Button>
             </div>
@@ -230,7 +230,7 @@ export function ShareDialog({ threatModelId, threatModelName }: ShareDialogProps
                 <Option value="REVIEWER">Reviewer</Option>
                 <Option value="VIEWER">Viewer</Option>
               </Dropdown>
-              <Button icon={<Link20Regular />} appearance="secondary" onClick={handleCreateLink}>
+              <Button icon={<Link20Regular />} appearance="secondary" onClick={handleCreateLink} title="Create a shareable link">
                 Create Link
               </Button>
             </div>

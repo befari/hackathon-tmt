@@ -415,6 +415,7 @@ export function PropertyPanel({
               appearance="subtle"
               icon={<Delete20Regular />}
               style={{ color: tokens.colorPaletteRedForeground1 }}
+              title="Delete this component or data flow"
             >
               Delete
             </Button>

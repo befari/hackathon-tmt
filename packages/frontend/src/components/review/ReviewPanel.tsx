@@ -244,7 +244,7 @@ export function ReviewPanel() {
         </Text>
         <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
           <DialogTrigger>
-            <Button appearance="primary" icon={<Add20Regular />}>
+            <Button appearance="primary" icon={<Add20Regular />} title="Start a new review">
               New Review
             </Button>
           </DialogTrigger>
@@ -450,6 +450,7 @@ export function ReviewPanel() {
                       appearance="subtle"
                       icon={<Checkmark20Regular />}
                       onClick={() => handleResolve(comment.id)}
+                      title="Mark as resolved"
                     >
                       Resolve
                     </Button>
@@ -459,6 +460,7 @@ export function ReviewPanel() {
                     appearance="subtle"
                     icon={<ArrowReply20Regular />}
                     onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                    title="Reply to this comment"
                   >
                     Reply
                   </Button>

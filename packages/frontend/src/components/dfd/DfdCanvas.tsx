@@ -1018,6 +1018,7 @@ export function DfdCanvas() {
                   icon={<ArrowUpload20Regular />}
                   onClick={() => fileInputRef.current?.click()}
                   size="small"
+                  title="Upload source code to auto-generate DFD"
                 >
                   Upload Source Code (.zip)
                 </Button>
@@ -1052,6 +1053,7 @@ export function DfdCanvas() {
               size="small"
               appearance="subtle"
               icon={<Comment20Regular />}
+              title="Add a comment on this component"
               onClick={() => {
                 const node = nodes.find((n) => n.id === actionNode.nodeId);
                 const label = (node?.data as any)?.label || 'Component';
@@ -1064,6 +1066,7 @@ export function DfdCanvas() {
               size="small"
               appearance="subtle"
               icon={<ShieldTask20Regular />}
+              title="Add a threat linked to this component"
               onClick={() => {
                 const node = nodes.find((n) => n.id === actionNode.nodeId);
                 const label = (node?.data as any)?.label || 'Component';

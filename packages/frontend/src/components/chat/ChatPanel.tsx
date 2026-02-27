@@ -152,6 +152,8 @@ export function ChatPanel() {
           icon={sending ? <Spinner size="tiny" /> : <Send20Regular />}
           onClick={handleSend}
           disabled={!input.trim() || sending}
+          title="Send message"
+          aria-label="Send message"
         />
       </div>
     </div>

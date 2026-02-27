@@ -172,12 +172,13 @@ export function Dashboard() {
             icon={<ArrowUpload20Regular />}
             disabled={importing}
             onClick={() => fileInputRef.current?.click()}
+            title="Import a Microsoft Threat Modeling Tool file"
           >
             {importing ? 'Importing…' : 'Import .tm7'}
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(_e, data) => setDialogOpen(data.open)}>
           <DialogTrigger>
-            <Button appearance="primary" icon={<Add20Regular />}>
+            <Button appearance="primary" icon={<Add20Regular />} title="Create a new threat model">
               New Threat Model
             </Button>
           </DialogTrigger>
