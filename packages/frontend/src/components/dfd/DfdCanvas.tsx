@@ -95,6 +95,16 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     flexShrink: 0,
+    overflowX: 'auto' as const,
+    overflowY: 'hidden' as const,
+    scrollbarWidth: 'thin' as const,
+    '&::-webkit-scrollbar': {
+      height: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: tokens.colorNeutralStroke1,
+      borderRadius: '2px',
+    },
   },
   container: {
     width: '100%',
@@ -839,9 +849,10 @@ export function DfdCanvas() {
           selectedValue={selectedDiagramId ?? undefined}
           onTabSelect={handleTabSelect}
           size="small"
+          style={{ flexShrink: 0 }}
         >
           {diagrams.map((d) => (
-            <Tab key={d.id} value={d.id}>
+            <Tab key={d.id} value={d.id} aria-label={`Diagram: ${d.name}`} style={{ whiteSpace: 'nowrap' }}>
               {d.name}
             </Tab>
           ))}
@@ -908,7 +919,7 @@ export function DfdCanvas() {
           selectNodesOnDrag={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <Controls style={{ backgroundColor: '#2d2d2d', borderColor: '#444', borderRadius: '8px' }} />
+          <Controls style={{ backgroundColor: tokens.colorNeutralBackground4, borderColor: tokens.colorNeutralStroke1, borderRadius: '8px' }} />
           <Panel position="bottom-left" style={{ left: '50px', bottom: '10px' }}>
             <div style={{ display: 'flex', gap: '4px' }}>
               <Button
@@ -918,7 +929,8 @@ export function DfdCanvas() {
                 disabled={!canUndo}
                 onClick={() => undo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
                 title="Undo (Ctrl+Z)"
-                style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
+                aria-label="Undo"
+                style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
               />
               <Button
                 appearance="subtle"
@@ -927,9 +939,10 @@ export function DfdCanvas() {
                 disabled={!canRedo}
                 onClick={() => redo(nodesRef.current, edgesRef.current, setNodes, setEdges)}
                 title="Redo (Ctrl+Y)"
-                style={{ backgroundColor: '#2d2d2d', color: '#ccc', minWidth: 'auto' }}
+                aria-label="Redo"
+                style={{ backgroundColor: tokens.colorNeutralBackground4, color: tokens.colorNeutralForeground2, minWidth: 'auto' }}
               />
-              <div style={{ width: '1px', height: '20px', backgroundColor: '#555' }} />
+              <div style={{ width: '1px', height: '20px', backgroundColor: tokens.colorNeutralStroke2 }} />
               <Button
                 appearance="subtle"
                 icon={saveStatus === 'saved' ? <Checkmark20Regular /> : <Save20Regular />}
@@ -937,7 +950,8 @@ export function DfdCanvas() {
                 disabled={saveStatus === 'saving'}
                 onClick={handleSaveAll}
                 title="Save All (Ctrl+S)"
-                style={{ backgroundColor: '#2d2d2d', color: saveStatus === 'saved' ? '#4caf50' : '#ccc', minWidth: 'auto' }}
+                aria-label="Save all changes"
+                style={{ backgroundColor: tokens.colorNeutralBackground4, color: saveStatus === 'saved' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground2, minWidth: 'auto' }}
               />
             </div>
           </Panel>
@@ -1045,6 +1059,8 @@ export function DfdCanvas() {
                 size="small"
                 appearance="subtle"
                 icon={<Dismiss16Regular />}
+                aria-label="Close comments"
+                title="Close comments"
                 onClick={() => setCommentPanelNode(null)}
               />
             </div>
@@ -1122,7 +1138,7 @@ export function DfdCanvas() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--colorNeutralStroke2)' }}>
                 <Text weight="semibold">Diagram Properties</Text>
-                <Button appearance="subtle" size="small" icon={<Dismiss16Regular />} onClick={() => setShowDiagramPanel(false)} />
+                <Button appearance="subtle" size="small" icon={<Dismiss16Regular />} aria-label="Close diagram properties" title="Close" onClick={() => setShowDiagramPanel(false)} />
               </div>
               <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

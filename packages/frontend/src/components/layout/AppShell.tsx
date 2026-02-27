@@ -204,6 +204,8 @@ export function AppShell({ children }: AppShellProps) {
             appearance="subtle"
             onClick={() => setExpanded(!expanded)}
             size="small"
+            aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
           />
         </div>
       </nav>

@@ -236,6 +236,8 @@ export function Dashboard() {
                         appearance="subtle"
                         icon={<MoreVertical20Regular />}
                         size="small"
+                        aria-label="Threat model actions"
+                        title="More actions"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </MenuTrigger>

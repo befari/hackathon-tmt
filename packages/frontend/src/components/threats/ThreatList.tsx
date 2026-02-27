@@ -512,6 +512,8 @@ export function ThreatList() {
                       size="small"
                       appearance="subtle"
                       icon={<Eye20Regular />}
+                      aria-label={`View ${threat.title} in DFD`}
+                      title="View in DFD"
                       onClick={() => {
                         const diagId = (threat as any).dataFlow?.diagramId || (threat as any).component?.diagramId;
                         const focusId = (threat as any).dataFlow?.id || (threat as any).component?.id;
@@ -525,6 +527,8 @@ export function ThreatList() {
                     size="small"
                     appearance="subtle"
                     icon={<Edit20Regular />}
+                    aria-label={`Edit ${threat.title}`}
+                    title="Edit threat"
                     onClick={() => {
                       setEditThreat({
                         id: threat.id,
@@ -544,6 +548,8 @@ export function ThreatList() {
                     appearance="subtle"
                     style={{ color: tokens.colorPaletteRedForeground1 }}
                     icon={<Delete20Regular />}
+                    aria-label={`Delete ${threat.title}`}
+                    title="Delete threat"
                     onClick={() => setDeleteThreatTarget({ id: threat.id, title: threat.title })}
                   >
                     Delete
@@ -552,6 +558,8 @@ export function ThreatList() {
                     size="small"
                     appearance="subtle"
                     icon={expandedThreat === threat.id ? <ChevronUp20Regular /> : <ChevronDown20Regular />}
+                    aria-label={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
+                    title={expandedThreat === threat.id ? 'Collapse comments' : 'Expand comments'}
                     onClick={() => toggleComments(threat.id)}
                   >
                     <Comment20Regular style={{ marginRight: '4px' }} />

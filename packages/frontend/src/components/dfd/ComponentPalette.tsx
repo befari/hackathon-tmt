@@ -171,8 +171,12 @@ export function ComponentPalette() {
           <div
             className={styles.categoryHeader}
             draggable
+            role="button"
+            tabIndex={0}
+            aria-label={`${cat.label} — drag to add to diagram`}
             onDragStart={(e) => onDragStart(e, cat.type, cat.nodeType)}
             onClick={() => toggleCategory(cat.type)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(cat.type); } }}
           >
             {expanded[cat.type] ? <ChevronDown12Regular /> : <ChevronRight12Regular />}
             {cat.icon}
@@ -184,6 +188,10 @@ export function ComponentPalette() {
                 key={sub.subtype}
                 className={styles.item}
                 draggable
+                role="button"
+                tabIndex={0}
+                aria-label={`${sub.label} — drag to add to diagram`}
+                title={`Drag ${sub.label} onto the canvas`}
                 onDragStart={(e) => onDragStart(e, cat.type, sub.nodeType || cat.nodeType, sub.subtype)}
               >
                 {sub.icon}

@@ -282,6 +282,8 @@ export function PropertyPanel({
           appearance="subtle"
           icon={<Dismiss16Regular />}
           size="small"
+          aria-label="Close properties panel"
+          title="Close"
           onClick={onClose}
         />
       </div>
@@ -359,6 +361,8 @@ export function PropertyPanel({
               size="small"
               appearance="subtle"
               icon={<Add16Regular />}
+              aria-label="Add threat"
+              title="Add a new threat"
               onClick={() => setAddThreatOpen(true)}
             >
               Add
