@@ -213,6 +213,7 @@ export function AppShell({ children }: AppShellProps) {
               onClick={() => setExpanded(!expanded)}
               size="small"
               aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+              style={expanded ? { alignSelf: 'flex-end' } : undefined}
             />
           </Tooltip>
         </div>
