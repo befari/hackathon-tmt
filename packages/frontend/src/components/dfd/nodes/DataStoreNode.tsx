@@ -1,6 +1,7 @@
-import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
+import { NodeResizer, type NodeProps } from '@xyflow/react';
 import { makeStyles, tokens, Text, CounterBadge } from '@fluentui/react-components';
 import { useTakeSnapshot } from '../UndoRedoContext';
+import { NodeHandles } from './NodeHandles';
 
 const useStyles = makeStyles({
   wrapper: {
@@ -45,10 +46,7 @@ export function DataStoreNode({ data, selected }: NodeProps) {
       <NodeResizer isVisible={selected} minWidth={80} minHeight={40}
         onResizeStart={takeSnapshot}
         handleStyle={{ backgroundColor: tokens.colorPaletteGreenBorder1, width: 7, height: 7 }} />
-      <Handle type="source" position={Position.Top} id="top-src" />
-      <Handle type="target" position={Position.Top} id="top-tgt" />
-      <Handle type="source" position={Position.Left} id="left-src" />
-      <Handle type="target" position={Position.Left} id="left-tgt" />
+      <NodeHandles />
       <div className={styles.wrapper}>
         <div className={styles.node}>
           <Text size={200} weight="semibold" style={{ wordBreak: 'break-word', lineHeight: '1.2', overflow: 'hidden' }}>
@@ -61,10 +59,6 @@ export function DataStoreNode({ data, selected }: NodeProps) {
           </div>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} id="bottom-src" />
-      <Handle type="target" position={Position.Bottom} id="bottom-tgt" />
-      <Handle type="source" position={Position.Right} id="right-src" />
-      <Handle type="target" position={Position.Right} id="right-tgt" />
     </>
   );
 }

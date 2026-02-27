@@ -838,6 +838,26 @@ export function DfdCanvas() {
     [id, selectedDiagramId, setEdges, takeSnapshot]
   );
 
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      takeSnapshot(nodesRef.current, edgesRef.current);
+      setEdges((eds) =>
+        eds.map((e) =>
+          e.id === oldEdge.id
+            ? {
+                ...e,
+                source: newConnection.source || e.source,
+                target: newConnection.target || e.target,
+                sourceHandle: newConnection.sourceHandle ?? e.sourceHandle,
+                targetHandle: newConnection.targetHandle ?? e.targetHandle,
+              }
+            : e,
+        ),
+      );
+    },
+    [setEdges, takeSnapshot],
+  );
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -941,6 +961,7 @@ export function DfdCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={onReconnect}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onPaneClick={handlePaneClick}
