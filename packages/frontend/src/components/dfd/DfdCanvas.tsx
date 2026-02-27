@@ -307,8 +307,27 @@ export function DfdCanvas() {
   const styles = useStyles();
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  // Wrap onNodesChange to keep trust boundaries at negative z-index
+  const onNodesChange = useCallback((changes: any[]) => {
+    onNodesChangeBase(changes);
+    // After selection changes, force trust boundary z-index back down
+    const hasSelectionChange = changes.some((c: any) => c.type === 'select');
+    if (hasSelectionChange) {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.type === 'trustBoundary' || n.type === 'trustBoundaryLine') {
+            const area = ((n.style?.width as number) || 200) * ((n.style?.height as number) || 100);
+            const z = -Math.max(1, Math.min(100, Math.round(area / 5000)));
+            return n.zIndex === z ? n : { ...n, zIndex: z };
+          }
+          return n;
+        }),
+      );
+    }
+  }, [onNodesChangeBase, setNodes]);
   const [loading, setLoading] = useState(true);
   const [modelName, setModelName] = useState('');
   const [uploading, setUploading] = useState(false);

@@ -45,6 +45,10 @@
 /* Trust boundary nodes: allow clicking through to nested components */
 .react-flow__node-trustBoundary {
   pointer-events: none !important;
+  z-index: -50 !important;
+}
+.react-flow__node-trustBoundary.selected {
+  z-index: -50 !important;
 }
 .react-flow__node-trustBoundary .react-flow__handle {
   pointer-events: auto !important;
