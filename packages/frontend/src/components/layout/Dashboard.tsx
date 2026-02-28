@@ -403,7 +403,7 @@ export function Dashboard() {
 
       {/* Edit Threat Model Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(_e, data) => { if (!data.open) { setEditDialogOpen(false); setEditModel(null); } }}>
-        <DialogSurface>
+        <DialogSurface style={{ maxWidth: '560px', width: '100%' }}>
           <DialogBody>
             <DialogTitle>Edit Threat Model</DialogTitle>
             <DialogContent>
@@ -415,6 +415,7 @@ export function Dashboard() {
                     value={editModel?.name || ''}
                     onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, name: d.value } : null)}
                     aria-label="Threat model name"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div>
@@ -425,6 +426,7 @@ export function Dashboard() {
                     onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, description: d.value } : null)}
                     rows={3}
                     aria-label="Threat model description"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <Divider />
@@ -435,6 +437,7 @@ export function Dashboard() {
                     value={editModel?.m1Owner || ''}
                     onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, m1Owner: d.value } : null)}
                     aria-label="M1 Owner"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div>
@@ -487,6 +490,7 @@ export function Dashboard() {
                     onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, assumptions: d.value } : null)}
                     rows={3}
                     aria-label="Assumptions"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div>
@@ -497,6 +501,7 @@ export function Dashboard() {
                     onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, externalDependencies: d.value } : null)}
                     rows={3}
                     aria-label="External Dependencies"
+                    style={{ width: '100%' }}
                   />
                 </div>
               </div>
