@@ -56,6 +56,8 @@ const useStyles = makeStyles({
   card: {
     cursor: 'pointer',
     position: 'relative' as const,
+    height: '140px',
+    overflow: 'hidden' as const,
     '&:hover': {
       boxShadow: tokens.shadow8,
     },
@@ -340,7 +342,17 @@ export function Dashboard() {
               </div>
               <CardHeader
                 header={<Text weight="semibold">{model.name}</Text>}
-                description={model.description || 'No description'}
+                description={
+                  <Text size={200} style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical' as const,
+                    overflow: 'hidden',
+                    color: tokens.colorNeutralForeground3,
+                  }}>
+                    {model.description || 'No description'}
+                  </Text>
+                }
               />
               <div className={styles.cardMeta}>
                 <Badge appearance="outline" color={statusColor[model.status] || 'informative'}>
@@ -396,26 +408,35 @@ export function Dashboard() {
             <DialogTitle>Edit Threat Model</DialogTitle>
             <DialogContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-                <Input
-                  placeholder="Threat model name"
-                  value={editModel?.name || ''}
-                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, name: d.value } : null)}
-                  aria-label="Threat model name"
-                />
-                <Textarea
-                  placeholder="Description (optional)"
-                  value={editModel?.description || ''}
-                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, description: d.value } : null)}
-                  rows={3}
-                  aria-label="Threat model description"
-                />
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>Name</Text>
+                  <Input
+                    placeholder="Threat model name"
+                    value={editModel?.name || ''}
+                    onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, name: d.value } : null)}
+                    aria-label="Threat model name"
+                  />
+                </div>
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>Description</Text>
+                  <Textarea
+                    placeholder="Description (optional)"
+                    value={editModel?.description || ''}
+                    onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, description: d.value } : null)}
+                    rows={3}
+                    aria-label="Threat model description"
+                  />
+                </div>
                 <Divider />
-                <Input
-                  placeholder="M1 Owner (e.g. John Smith)"
-                  value={editModel?.m1Owner || ''}
-                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, m1Owner: d.value } : null)}
-                  aria-label="M1 Owner"
-                />
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>M1 Owner</Text>
+                  <Input
+                    placeholder="e.g. John Smith"
+                    value={editModel?.m1Owner || ''}
+                    onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, m1Owner: d.value } : null)}
+                    aria-label="M1 Owner"
+                  />
+                </div>
                 <div>
                   <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>Dev Owners</Text>
                   <div className={styles.chipList}>
@@ -458,20 +479,26 @@ export function Dashboard() {
                   </div>
                 </div>
                 <Divider />
-                <Textarea
-                  placeholder="Assumptions — document key assumptions about the system"
-                  value={editModel?.assumptions || ''}
-                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, assumptions: d.value } : null)}
-                  rows={3}
-                  aria-label="Assumptions"
-                />
-                <Textarea
-                  placeholder="External Dependencies — third-party services, libraries, APIs"
-                  value={editModel?.externalDependencies || ''}
-                  onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, externalDependencies: d.value } : null)}
-                  rows={3}
-                  aria-label="External Dependencies"
-                />
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>Assumptions</Text>
+                  <Textarea
+                    placeholder="Document key assumptions about the system"
+                    value={editModel?.assumptions || ''}
+                    onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, assumptions: d.value } : null)}
+                    rows={3}
+                    aria-label="Assumptions"
+                  />
+                </div>
+                <div>
+                  <Text size={200} weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>External Dependencies</Text>
+                  <Textarea
+                    placeholder="Third-party services, libraries, APIs"
+                    value={editModel?.externalDependencies || ''}
+                    onChange={(_e, d) => setEditModel(prev => prev ? { ...prev, externalDependencies: d.value } : null)}
+                    rows={3}
+                    aria-label="External Dependencies"
+                  />
+                </div>
               </div>
             </DialogContent>
             <DialogActions>
