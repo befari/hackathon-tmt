@@ -351,6 +351,15 @@ export function DfdCanvas() {
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
+  // Stable callback for text annotation inline edits
+  const handleAnnotationLabelChange = useCallback((nodeId: string, newLabel: string) => {
+    setNodes((nds) =>
+      nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n)
+    );
+  }, [setNodes]);
+  const annotationLabelRef = useRef(handleAnnotationLabelChange);
+  annotationLabelRef.current = handleAnnotationLabelChange;
+
   // Stable snapshot function for child components via context
   const takeSnapshotNow = useCallback(() => {
     takeSnapshot(nodesRef.current, edgesRef.current);
@@ -408,6 +417,12 @@ export function DfdCanvas() {
       setSelectedDiagramId(diagramId);
       const diagram = allDiagrams.find((d) => d.id === diagramId);
       const { flowNodes, flowEdges } = diagramToNodesAndEdges(diagram, counts);
+      // Inject onLabelChange callback for text annotation nodes
+      for (const n of flowNodes) {
+        if (n.type === 'textAnnotation') {
+          n.data.onLabelChange = (nodeId: string, newLabel: string) => annotationLabelRef.current(nodeId, newLabel);
+        }
+      }
       setNodes(flowNodes);
       setEdges(flowEdges);
     },
@@ -666,6 +681,7 @@ export function DfdCanvas() {
             sourceFiles: data.sourceFiles || [],
             componentType: data.type,
             commentCount: 0,
+            ...(isAnnotation ? { onLabelChange: (nodeId: string, newLabel: string) => annotationLabelRef.current(nodeId, newLabel) } : {}),
           },
         };
         setNodes((nds) => [...nds, newNode]);

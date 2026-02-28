@@ -291,7 +291,24 @@ export function PropertyPanel({
       </div>
 
       <div className={styles.body}>
-        {isNode && (
+        {isNode && type === 'TEXT_ANNOTATION' && (
+          <>
+            <div className={styles.field}>
+              <Text size={200} weight="semibold">Annotation Text</Text>
+              <Textarea
+                value={name}
+                onChange={(_e, d) => setName(d.value)}
+                rows={6}
+                placeholder="Type your annotation..."
+                style={{ width: '100%' }}
+              />
+            </div>
+            <Text size={200} style={{ opacity: 0.5 }}>
+              Tip: Double-click the annotation on the canvas to edit inline
+            </Text>
+          </>
+        )}
+        {isNode && type !== 'TEXT_ANNOTATION' && (
           <>
             <div className={styles.field}>
               <Text size={200} weight="semibold">Name</Text>
