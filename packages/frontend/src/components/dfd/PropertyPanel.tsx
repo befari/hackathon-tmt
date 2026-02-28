@@ -272,12 +272,13 @@ export function PropertyPanel({
 
   const isNode = !!selectedNode;
   const isEdge = !!selectedEdge;
+  const isAnnotation = selectedNode?.type === 'textAnnotation';
 
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
         <Text weight="semibold" size={300}>
-          {isNode ? (type === 'TEXT_ANNOTATION' ? 'Annotation Properties' : 'Component Properties') : 'Data Flow Properties'}
+          {isNode ? (isAnnotation ? 'Annotation Properties' : 'Component Properties') : 'Data Flow Properties'}
         </Text>
         <Tooltip content="Close" relationship="label">
           <Button
@@ -291,7 +292,7 @@ export function PropertyPanel({
       </div>
 
       <div className={styles.body}>
-        {isNode && type === 'TEXT_ANNOTATION' && (
+        {isNode && isAnnotation && (
           <>
             <div className={styles.field}>
               <Text size={200} weight="semibold">Annotation Text</Text>
@@ -308,7 +309,7 @@ export function PropertyPanel({
             </Text>
           </>
         )}
-        {isNode && type !== 'TEXT_ANNOTATION' && (
+        {isNode && !isAnnotation && (
           <>
             <div className={styles.field}>
               <Text size={200} weight="semibold">Name</Text>
