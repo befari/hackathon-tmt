@@ -277,7 +277,7 @@ export function PropertyPanel({
     <div className={styles.panel}>
       <div className={styles.header}>
         <Text weight="semibold" size={300}>
-          {isNode ? 'Component Properties' : 'Data Flow Properties'}
+          {isNode ? (type === 'TEXT_ANNOTATION' ? 'Annotation Properties' : 'Component Properties') : 'Data Flow Properties'}
         </Text>
         <Tooltip content="Close" relationship="label">
           <Button
@@ -298,9 +298,9 @@ export function PropertyPanel({
               <Textarea
                 value={name}
                 onChange={(_e, d) => setName(d.value)}
-                rows={6}
+                rows={10}
                 placeholder="Type your annotation..."
-                style={{ width: '100%' }}
+                style={{ width: '100%', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
               />
             </div>
             <Text size={200} style={{ opacity: 0.5 }}>
