@@ -1,4 +1,4 @@
-# Superior TMT — AI-Powered Threat Modeling Tool
+# Hackathon TMT — AI-Powered Threat Modeling Tool
 
 An AI-assisted threat modeling tool that analyzes source code, generates Data Flow Diagrams (DFDs), enumerates STRIDE threats, and provides a collaborative review surface for security engineers.
 

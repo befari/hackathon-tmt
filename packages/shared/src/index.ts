@@ -51,14 +51,29 @@ export interface ThreatModel {
   name: string;
   description?: string;
   repoUrl?: string;
+  m1Owner?: string;
+  devOwners?: string[];
+  assumptions?: string;
+  externalDependencies?: string;
   version: number;
   status: ModelStatus;
   createdAt: string;
   updatedAt: string;
-  components?: Component[];
-  dataFlows?: DataFlow[];
+  diagrams?: Diagram[];
   threats?: Threat[];
   reviews?: Review[];
+}
+
+export interface Diagram {
+  id: string;
+  name: string;
+  description?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  threatModelId: string;
+  components?: Component[];
+  dataFlows?: DataFlow[];
 }
 
 export interface Component {
@@ -70,7 +85,7 @@ export interface Component {
   positionX: number;
   positionY: number;
   metadata?: Record<string, unknown>;
-  threatModelId: string;
+  diagramId: string;
 }
 
 export interface DataFlow {
@@ -82,11 +97,12 @@ export interface DataFlow {
   metadata?: Record<string, unknown>;
   sourceId: string;
   targetId: string;
-  threatModelId: string;
+  diagramId: string;
 }
 
 export interface Threat {
   id: string;
+  number: number;
   title: string;
   description: string;
   strideCategory: StrideCategory;
@@ -126,12 +142,21 @@ export interface Review {
   comments?: Comment[];
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  threatModelId: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
   threatModelId: string;
+  sessionId?: string;
 }
 
 // ==================== API Types ====================
@@ -146,6 +171,10 @@ export interface UpdateThreatModelRequest {
   name?: string;
   description?: string;
   status?: ModelStatus;
+  m1Owner?: string;
+  devOwners?: string[];
+  assumptions?: string;
+  externalDependencies?: string;
 }
 
 export interface CreateCommentRequest {
@@ -179,4 +208,41 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// ==================== Auth ====================
+
+export enum MemberRole {
+  OWNER = 'OWNER',
+  EDITOR = 'EDITOR',
+  REVIEWER = 'REVIEWER',
+  VIEWER = 'VIEWER',
+}
+
+export interface User {
+  id: string;
+  entraId: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface ThreatModelMember {
+  id: string;
+  role: MemberRole;
+  userId: string;
+  threatModelId: string;
+  user?: User;
+  createdAt: string;
+}
+
+export interface ShareLink {
+  id: string;
+  token: string;
+  role: MemberRole;
+  active: boolean;
+  threatModelId: string;
+  createdAt: string;
+  expiresAt?: string;
 }

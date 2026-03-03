@@ -1,25 +1,65 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prisma/client.js';
+
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 export const threatRouter = Router();
 
+// Get next threat number for a threat model
+async function nextThreatNumber(threatModelId: string): Promise<number> {
+  const max = await prisma.threat.aggregate({
+    where: { threatModelId },
+    _max: { number: true },
+  });
+  return (max._max.number || 0) + 1;
+}
+
+// Create a threat
+threatRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
+  const { title, description, strideCategory, severity, threatModelId, componentId, dataFlowId, mitigationNotes } = req.body;
+
+  const number = await nextThreatNumber(threatModelId);
+  const threat = await prisma.threat.create({
+    data: {
+      number,
+      title,
+      description,
+      strideCategory,
+      severity: severity || 'MEDIUM',
+      threatModelId,
+      ...(componentId && { componentId }),
+      ...(dataFlowId && { dataFlowId }),
+      ...(mitigationNotes && { mitigationNotes }),
+      aiGenerated: false,
+    },
+    include: {
+      component: { select: { id: true, name: true, type: true } },
+      dataFlow: { select: { id: true, label: true } },
+    },
+  });
+
+  res.status(201).json({ data: threat });
+}));
+
 // List threats (with optional filters)
-threatRouter.get('/', async (req: Request, res: Response) => {
-  const { threatModelId, strideCategory, severity, status } = req.query;
+threatRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
+  const { threatModelId, strideCategory, severity, status, componentId, dataFlowId } = req.query;
 
   const threats = await prisma.threat.findMany({
     where: {
       ...(threatModelId && { threatModelId: threatModelId as string }),
+      ...(componentId && { componentId: componentId as string }),
+      ...(dataFlowId && { dataFlowId: dataFlowId as string }),
       ...(strideCategory && { strideCategory: strideCategory as any }),
       ...(severity && { severity: severity as any }),
       ...(status && { status: status as any }),
     },
     include: {
-      component: { select: { id: true, name: true, type: true } },
-      dataFlow: { select: { id: true, label: true } },
+      component: { select: { id: true, name: true, type: true, diagramId: true } },
+      dataFlow: { select: { id: true, label: true, diagramId: true, diagram: { select: { id: true, name: true } } } },
       _count: { select: { comments: true } },
     },
-    orderBy: [{ severity: 'asc' }],
   });
 
   // Custom severity order (CRITICAL first)
@@ -27,10 +67,10 @@ threatRouter.get('/', async (req: Request, res: Response) => {
   threats.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
   res.json({ data: threats });
-});
+}));
 
 // Get a single threat
-threatRouter.get('/:id', async (req: Request, res: Response) => {
+threatRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const threat = await prisma.threat.findUnique({
     where: { id: req.params.id as string },
     include: {
@@ -51,10 +91,10 @@ threatRouter.get('/:id', async (req: Request, res: Response) => {
     return;
   }
   res.json({ data: threat });
-});
+}));
 
 // Update a threat (status, mitigation notes, severity)
-threatRouter.patch('/:id', async (req: Request, res: Response) => {
+threatRouter.patch('/:id', asyncHandler(async (req: Request, res: Response) => {
   const { status, mitigationNotes, severity, title, description } = req.body;
 
   const threat = await prisma.threat.update({
@@ -69,10 +109,10 @@ threatRouter.patch('/:id', async (req: Request, res: Response) => {
   });
 
   res.json({ data: threat });
-});
+}));
 
 // Delete a threat
-threatRouter.delete('/:id', async (req: Request, res: Response) => {
+threatRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   await prisma.threat.delete({ where: { id: req.params.id as string } });
   res.status(204).send();
-});
+}));

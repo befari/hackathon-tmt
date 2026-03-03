@@ -1,0 +1,66 @@
+/* Dark theme overrides for React Flow controls */
+.react-flow__controls {
+  background-color: #2d2d2d !important;
+  border: 1px solid #444 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.react-flow__controls-button {
+  background-color: #2d2d2d !important;
+  border-bottom: 1px solid #444 !important;
+  fill: #d4d4d4 !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #3d3d3d !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #d4d4d4 !important;
+}
+
+/* MiniMap dark theme */
+.react-flow__minimap {
+  background-color: #1e1e1e !important;
+  border: 1px solid #444 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Edge labels dark theme */
+.react-flow__edge-textbg {
+  fill: #2d2d2d !important;
+}
+
+.react-flow__edge-text {
+  fill: #d4d4d4 !important;
+}
+
+/* Attribution removal (React Flow free tier shows watermark) */
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* Trust boundary nodes: allow clicking through to nested components */
+.react-flow__node-trustBoundary {
+  pointer-events: none !important;
+  z-index: -50 !important;
+}
+.react-flow__node-trustBoundary.selected {
+  z-index: -50 !important;
+}
+.react-flow__node-trustBoundary .react-flow__resize-control {
+  pointer-events: auto !important;
+}
+
+/* Tighter edge-to-handle connection (reduce gap) */
+.react-flow__handle {
+  opacity: 0.6;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.react-flow__handle:hover,
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1;
+  transform: scale(1.3);
+}

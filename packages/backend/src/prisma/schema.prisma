@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ==================== Enums ====================
@@ -53,7 +55,29 @@ enum ReviewStatus {
   CANCELLED
 }
 
+enum MemberRole {
+  OWNER
+  EDITOR
+  REVIEWER
+  VIEWER
+}
+
 // ==================== Models ====================
+
+model User {
+  id        String   @id @default(uuid())
+  entraId   String   @unique // Azure AD object ID
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships ThreatModelMember[]
+  comments    Comment[]
+
+  @@map("users")
+}
 
 model ThreatModel {
   id          String      @id @default(uuid())
@@ -65,13 +89,61 @@ model ThreatModel {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  components   Component[]
-  dataFlows    DataFlow[]
-  threats      Threat[]
-  chatMessages ChatMessage[]
-  reviews      Review[]
+  diagrams       Diagram[]
+  threats        Threat[]
+  chatMessages   ChatMessage[]
+  reviews        Review[]
+  members        ThreatModelMember[]
+  shareLinks     ShareLink[]
+  aiGenerations  AIGeneration[]
 
   @@map("threat_models")
+}
+
+model ThreatModelMember {
+  id   String     @id @default(uuid())
+  role MemberRole @default(VIEWER)
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, threatModelId])
+  @@map("threat_model_members")
+}
+
+model ShareLink {
+  id        String     @id @default(uuid())
+  token     String     @unique @default(uuid())
+  role      MemberRole @default(VIEWER)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  expiresAt DateTime?
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@map("share_links")
+}
+
+model Diagram {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "Enrollment", "Authentication"
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  threatModelId String
+  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  components Component[]
+  dataFlows  DataFlow[]
+
+  @@map("diagrams")
 }
 
 model Component {
@@ -84,8 +156,8 @@ model Component {
   positionY   Float         @default(0)
   metadata    Json?
 
-  threatModelId String
-  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  diagramId String
+  diagram   Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
 
   outgoingFlows DataFlow[] @relation("source")
   incomingFlows DataFlow[] @relation("target")
@@ -103,12 +175,12 @@ model DataFlow {
   crossesTrustBoundary Boolean @default(false)
   metadata             Json?
 
-  sourceId      String
-  source        Component @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetId      String
-  target        Component @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
-  threatModelId String
-  threatModel   ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  sourceId  String
+  source    Component @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId  String
+  target    Component @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
+  diagramId String
+  diagram   Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
 
   threats  Threat[]
   comments Comment[]
@@ -147,6 +219,8 @@ model Comment {
   updatedAt DateTime @updatedAt
   resolved  Boolean  @default(false)
 
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   threatId    String?
   threat      Threat?    @relation(fields: [threatId], references: [id], onDelete: Cascade)
   componentId String?
@@ -201,4 +275,56 @@ model CodeEmbedding {
 
   @@index([threatModelId])
   @@map("code_embeddings")
+}
+
+// ==================== AI Reference & Feedback ====================
+
+model ReferenceExample {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  /// Parsed .tm7 content as JSON (diagrams, elements, flows, threats)
+  parsedData  Json
+  /// Source file name (e.g., "Intune App for Linux.tm7")
+  sourceFile  String?
+  /// Average quality rating from feedback (null = no ratings yet)
+  avgRating   Float?
+  /// Number of times used in AI prompts
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("reference_examples")
+}
+
+model AIGeneration {
+  id             String   @id @default(uuid())
+  threatModelId  String
+  /// The raw AI output (diagrams + threats JSON)
+  aiOutput       Json
+  /// The prompt context used (summary, reference examples included)
+  promptContext  Json?
+  /// User's corrected version after edits (null = no edits)
+  correctedData  Json?
+  createdAt      DateTime @default(now())
+
+  feedback       AIFeedback?
+  threatModel    ThreatModel @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@index([threatModelId])
+  @@map("ai_generations")
+}
+
+model AIFeedback {
+  id             String   @id @default(uuid())
+  generationId   String   @unique
+  /// Quality rating 1-5
+  rating         Int
+  /// Optional freeform comment
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  generation     AIGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_feedback")
 }

@@ -30,9 +30,11 @@ interface CodeFile {
 }
 
 interface AnalysisResult {
+  diagramsCreated: number;
   componentsCreated: number;
   flowsCreated: number;
   threatsCreated: number;
+  generationId?: string | null;
 }
 
 export async function analyzeCodebase(
@@ -45,47 +47,62 @@ export async function analyzeCodebase(
   console.log('Step 1: Summarizing codebase...');
   const summaries = await summarizeFiles(client, files);
 
-  // Step 2: Generate DFD (components + data flows)
-  console.log('Step 2: Generating DFD...');
-  const dfd = await generateDfd(client, summaries, files);
+  // Step 2: Generate DFDs (one per scenario)
+  console.log('Step 2: Generating DFDs...');
+  const dfd = await generateDfd(client, summaries, files, threatModelId);
 
-  // Step 3: Save components and data flows to database
+  // Step 3: Save diagrams, components, and data flows to database
   console.log('Step 3: Saving to database...');
   const componentMap = new Map<string, string>(); // temp_id -> db_id
-
-  for (const comp of dfd.components) {
-    const created = await prisma.component.create({
-      data: {
-        name: comp.name,
-        type: comp.type,
-        description: comp.description,
-        sourceFiles: comp.sourceFiles || [],
-        positionX: comp.positionX || 0,
-        positionY: comp.positionY || 0,
-        threatModelId,
-      },
-    });
-    componentMap.set(comp.tempId, created.id);
-  }
-
+  let totalComponents = 0;
   let flowsCreated = 0;
-  for (const flow of dfd.dataFlows) {
-    const sourceId = componentMap.get(flow.sourceTempId);
-    const targetId = componentMap.get(flow.targetTempId);
-    if (!sourceId || !targetId) continue;
 
-    await prisma.dataFlow.create({
+  for (let i = 0; i < dfd.diagrams.length; i++) {
+    const diagramDef = dfd.diagrams[i];
+
+    const diagram = await prisma.diagram.create({
       data: {
-        label: flow.label,
-        protocol: flow.protocol,
-        dataClassification: flow.dataClassification,
-        crossesTrustBoundary: flow.crossesTrustBoundary || false,
-        sourceId,
-        targetId,
+        name: diagramDef.name,
+        description: diagramDef.description,
+        order: i,
         threatModelId,
       },
     });
-    flowsCreated++;
+
+    for (const comp of diagramDef.components) {
+      const created = await prisma.component.create({
+        data: {
+          name: comp.name,
+          type: comp.type,
+          description: comp.description,
+          sourceFiles: comp.sourceFiles || [],
+          positionX: comp.positionX || 0,
+          positionY: comp.positionY || 0,
+          diagramId: diagram.id,
+        },
+      });
+      componentMap.set(comp.tempId, created.id);
+    }
+    totalComponents += diagramDef.components.length;
+
+    for (const flow of diagramDef.dataFlows) {
+      const sourceId = componentMap.get(flow.sourceTempId);
+      const targetId = componentMap.get(flow.targetTempId);
+      if (!sourceId || !targetId) continue;
+
+      await prisma.dataFlow.create({
+        data: {
+          label: flow.label,
+          protocol: flow.protocol,
+          dataClassification: flow.dataClassification,
+          crossesTrustBoundary: flow.crossesTrustBoundary || false,
+          sourceId,
+          targetId,
+          diagramId: diagram.id,
+        },
+      });
+      flowsCreated++;
+    }
   }
 
   // Step 4: Generate threats
@@ -113,13 +130,15 @@ export async function analyzeCodebase(
   }
 
   console.log(
-    `Analysis complete: ${dfd.components.length} components, ${flowsCreated} flows, ${threatsCreated} threats`
+    `Analysis complete: ${dfd.diagrams.length} diagrams, ${totalComponents} components, ${flowsCreated} flows, ${threatsCreated} threats`
   );
 
   return {
-    componentsCreated: dfd.components.length,
+    diagramsCreated: dfd.diagrams.length,
+    componentsCreated: totalComponents,
     flowsCreated,
     threatsCreated,
+    generationId: (dfd as any)._generationId || null,
   };
 }
 
