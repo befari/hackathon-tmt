@@ -137,7 +137,7 @@ export function AppShell({ children }: AppShellProps) {
           <Shield20Regular />
           {expanded && (
             <Text weight="semibold" size={400}>
-              Superior TMT
+              Hackathon TMT
             </Text>
           )}
         </div>

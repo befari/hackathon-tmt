@@ -1,5 +1,5 @@
 {
-  "name": "superior-tmt",
+  "name": "hackathon-tmt",
   "version": "0.1.0",
   "private": true,
   "description": "AI-powered threat modeling tool",
@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "docker start superior-tmt-db 2>/dev/null; concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "docker start hackathon-tmt-db 2>/dev/null; concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "npm run dev -w packages/frontend -- --host",
     "dev:backend": "npm run dev -w packages/backend",
     "build": "npm run build --workspaces --if-present",

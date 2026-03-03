@@ -16,7 +16,7 @@ import { join } from 'path';
 const prisma = new PrismaClient();
 
 const upload = multer({
-  dest: join(tmpdir(), 'superior-tmt-uploads'),
+  dest: join(tmpdir(), 'hackathon-tmt-uploads'),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
   fileFilter: (_req, file, cb) => {
     if (file.originalname.toLowerCase().endsWith('.tm7')) {

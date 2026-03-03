@@ -31,7 +31,7 @@ import {
   DismissCircle20Regular,
 } from '@fluentui/react-icons';
 import { api } from '../../api/client';
-import type { Review, Comment, Threat, Component, DataFlow } from '@superior-tmt/shared';
+import type { Review, Comment, Threat, Component, DataFlow } from '@hackathon-tmt/shared';
 
 const useStyles = makeStyles({
   container: {

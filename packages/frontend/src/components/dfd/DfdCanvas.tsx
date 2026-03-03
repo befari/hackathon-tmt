@@ -77,7 +77,7 @@ import { AIRatingWidget } from './AIRatingWidget';
 import { ShareDialog } from '../sharing/ShareDialog';
 import { BendableEdge } from './edges/BendableEdge';
 import { api } from '../../api/client';
-import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@superior-tmt/shared';
+import type { Diagram, Component, DataFlow, Comment as TmtComment } from '@hackathon-tmt/shared';
 
 const nodeTypes = {
   process: ProcessNode,

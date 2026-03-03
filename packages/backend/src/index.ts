@@ -69,7 +69,7 @@ app.use(errorHandler);
 
 waitForDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`🛡️  Superior TMT backend running on http://localhost:${PORT}`);
+    console.log(`🛡️  Hackathon TMT backend running on http://localhost:${PORT}`);
   });
 }).catch((err) => {
   console.error('❌ Failed to start:', err.message);

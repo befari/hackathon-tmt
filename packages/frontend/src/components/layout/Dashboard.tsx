@@ -27,7 +27,7 @@ import {
   Divider,
 } from '@fluentui/react-components';
 import { Add20Regular, Shield20Regular, ArrowUpload20Regular, MoreVertical20Regular, Edit20Regular, Delete20Regular, Info20Regular } from '@fluentui/react-icons';
-import type { ThreatModel } from '@superior-tmt/shared';
+import type { ThreatModel } from '@hackathon-tmt/shared';
 import { api } from '../../api/client';
 import { useToast } from '../shared/ToastContext';
 

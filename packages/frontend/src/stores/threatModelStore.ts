@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ThreatModel, Diagram, Component, DataFlow, Threat } from '@superior-tmt/shared';
+import type { ThreatModel, Diagram, Component, DataFlow, Threat } from '@hackathon-tmt/shared';
 
 interface ThreatModelState {
   currentModel: ThreatModel | null;

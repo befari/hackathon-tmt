@@ -36,7 +36,7 @@ import {
 import { api } from '../../api/client';
 import { useToast } from '../shared/ToastContext';
 import { AIRatingWidget } from '../dfd/AIRatingWidget';
-import type { Threat, Comment as TmtComment } from '@superior-tmt/shared';
+import type { Threat, Comment as TmtComment } from '@hackathon-tmt/shared';
 
 const useStyles = makeStyles({
   container: {

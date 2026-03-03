@@ -19,7 +19,7 @@ import {
   Dismiss20Regular,
 } from '@fluentui/react-icons';
 import ReactMarkdown from 'react-markdown';
-import type { ChatMessage, ChatSession } from '@superior-tmt/shared';
+import type { ChatMessage, ChatSession } from '@hackathon-tmt/shared';
 
 interface MentionItem {
   type: 'threat' | 'diagram';
